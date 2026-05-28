@@ -64,7 +64,7 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
   { id: 'three_streak', title: 'On Fire', titleSinhala: 'ගින්නෙන්', description: '3-day learning streak', icon: '🔥' },
   { id: 'seven_streak', title: 'Dedicated Learner', titleSinhala: 'කැපවූ ඉගෙනුම්කරු', description: '7-day learning streak', icon: '💎' },
   { id: 'daily_goal', title: 'Goal Crusher', titleSinhala: 'ඉලක්ක බිඳිනා', description: 'Complete your daily XP goal', icon: '🎯' },
-  { id: 'all_lessons', title: 'Course Complete', titleSinhala: 'පාඨමාලාව සම්පූර්ණයි', description: 'Study all 6 lessons', icon: '🎊' },
+  { id: 'all_lessons', title: 'Course Complete', titleSinhala: 'පාඨමාලාව සම්පූර්ණයි', description: 'Study all 12 lessons', icon: '🎊' },
   { id: 'match_master', title: 'Match Master', titleSinhala: 'ගැලපුම් මාස්ටර්', description: 'Win the word match game', icon: '🃏' },
 ];
 

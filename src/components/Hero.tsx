@@ -165,13 +165,13 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
         <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <div className="inline-flex items-center gap-2.5 glass rounded-full px-4 sm:px-5 py-2 mb-6 sm:mb-8">
             <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-leaf-400 opacity-75" /><span className="relative inline-flex rounded-full h-2 w-2 bg-leaf-400" /></span>
-            <span className="text-white/80 text-[10px] sm:text-xs font-medium tracking-wide">v6.1 — Sri Lankan Cultural Video • AI Chatbot • 144 Phrases</span>
+            <span className="text-white/80 text-[10px] sm:text-xs font-medium tracking-wide">v6.1.3 — Built for Travelers • AI Survival Guide • Photo Scanner • 144 Phrases</span>
           </div>
         </div>
 
         {/* Title */}
         <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <h1 className="text-[2.6rem] leading-[1.29] sm:text-6xl md:text-7xl lg:text-8xl xl:text-[7.0rem] font-black text-white mb-3 sm:mb-4 sinhala-text tracking-tight">
+          <h1 className="text-[2.6rem] leading-[1.1] sm:text-6xl md:text-7xl lg:text-8xl xl:text-[8.5rem] font-black text-white mb-3 sm:mb-4 sinhala-text tracking-tight">
             සිංහල පුළුවන්ද<span className="text-saffron-400">?</span>
           </h1>
         </div>
@@ -182,8 +182,8 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
             {typedText}<span className="animate-pulse text-saffron-400/80">|</span>
           </p>
           <p className="text-xs sm:text-sm md:text-base text-white/45 max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-2">
-            Immerse yourself in the beauty of Sri Lanka's ancient language.
-            Real-world phrases for real-world moments — powered by AI.
+            Built for foreigners arriving in Sri Lanka. Survive tuk-tuks, order food,
+            handle emergencies, avoid scams, and speak to locals — all powered by AI.
           </p>
         </div>
 

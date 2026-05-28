@@ -64,7 +64,7 @@ export default function Navbar({ level, xp, xpProgress, streak, darkMode, onTogg
                 Sinhala Puluwanda
               </span>
               <span className={`block text-[10px] font-medium -mt-0.5 ${isHero ? 'text-saffron-300/80' : 'text-saffron-500'}`}>
-v6.1
+v6.1.3
               </span>
             </div>
           </button>
@@ -202,7 +202,7 @@ v6.1
 
             {/* Bottom of drawer */}
             <div className={`pt-4 border-t mt-4 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-              <div className="sinhala-text text-saffron-500 text-sm font-medium text-center">සිංහල පුළුවන්ද? v6.1</div>
+              <div className="sinhala-text text-saffron-500 text-sm font-medium text-center">සිංහල පුළුවන්ද? v6.1.3</div>
             </div>
           </div>
         </div>

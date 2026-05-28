@@ -29,6 +29,8 @@ export default function AboutSection({ darkMode }: AboutSectionProps) {
     { version: '5.0', desc: 'Cinematic video, real-world practical lessons', color: 'from-rose-400 to-red-600' },
     { version: '6.0', desc: 'AI Chatbot, 12 lessons, 144 words, 6 convos', color: 'from-saffron-400 to-saffron-600' },
     { version: '6.1', desc: 'Sri Lankan cultural video showcase', color: 'from-maroon-400 to-maroon-600' },
+    { version: '6.1.2', desc: '60 letters, male/female voice, deep AI', color: 'from-cyan-400 to-cyan-600' },
+    { version: '6.1.3', desc: 'Foreign traveler mode, photo scan, survival guides', color: 'from-saffron-400 to-saffron-600' },
   ];
 
   return (
@@ -54,11 +56,11 @@ export default function AboutSection({ darkMode }: AboutSectionProps) {
             {/* Photo / Avatar */}
             <div className="flex-shrink-0 relative">
               <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-3xl bg-gradient-to-br from-saffron-400 via-saffron-500 to-orange-600 flex items-center justify-center shadow-2xl shadow-saffron-500/25 overflow-hidden">
-                
+
                 {/* object-top කියන class එක add කළා */}
-                <img 
-                  src="/images/Gemini_Generated_Image_2ztzi02ztzi02ztz.png" 
-                  alt="Profile" 
+                <img
+                  src="/images/Gemini_Generated_Image_2ztzi02ztzi02ztz.png"
+                  alt="Profile"
                   className="w-full h-full object-cover object-top"
                 />
 
@@ -123,7 +125,7 @@ export default function AboutSection({ darkMode }: AboutSectionProps) {
         {/* === FEATURES === */}
         <div className="mb-14 sm:mb-20">
           <h3 className={`text-xl sm:text-2xl font-bold text-center mb-8 sm:mb-10 font-space ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-            ✨ What's Inside v6.1
+            ✨ What's Inside v6.1.3
           </h3>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
             {features.map((f, i) => (
@@ -145,11 +147,10 @@ export default function AboutSection({ darkMode }: AboutSectionProps) {
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto">
             {timeline.map((t, i) => (
-              <div key={i} className={`rounded-2xl p-4 sm:p-5 text-center transition-all duration-300 ${
-                i === timeline.length - 1
-                  ? darkMode ? 'glass-glow' : 'bg-gradient-to-br from-saffron-50 to-orange-50 border-2 border-saffron-200 shadow-lg shadow-saffron-100/40'
-                  : darkMode ? 'glass-dark' : 'glass-card'
-              }`}>
+              <div key={i} className={`rounded-2xl p-4 sm:p-5 text-center transition-all duration-300 ${i === timeline.length - 1
+                ? darkMode ? 'glass-glow' : 'bg-gradient-to-br from-saffron-50 to-orange-50 border-2 border-saffron-200 shadow-lg shadow-saffron-100/40'
+                : darkMode ? 'glass-dark' : 'glass-card'
+                }`}>
                 <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-lg mx-auto mb-3`}>
                   {t.version}
                 </div>
