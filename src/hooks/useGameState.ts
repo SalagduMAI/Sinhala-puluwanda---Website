@@ -1,5 +1,5 @@
 import { useLocalStorage } from './useLocalStorage';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 
 export interface Achievement {
   id: string;
@@ -17,6 +17,13 @@ export interface QuizScore {
   date: number;
 }
 
+export interface SRSInfo {
+  interval: number; // in days
+  ease: number;
+  repetitions: number;
+  nextReview: number; // timestamp
+}
+
 export interface GameState {
   xp: number;
   level: number;
@@ -32,6 +39,9 @@ export interface GameState {
   dailyGoal: number;
   dailyXpEarned: number;
   dailyGoalDate: string;
+  starredWords: Record<number, number[]>;
+  srsData: Record<string, SRSInfo>;
+  avatar: string;
 }
 
 const DEFAULT_STATE: GameState = {
@@ -49,6 +59,9 @@ const DEFAULT_STATE: GameState = {
   dailyGoal: 50,
   dailyXpEarned: 0,
   dailyGoalDate: '',
+  starredWords: {},
+  srsData: {},
+  avatar: 'novice',
 };
 
 export const ALL_ACHIEVEMENTS: Achievement[] = [
@@ -73,28 +86,60 @@ export const XP_WORD_LEARNED = 10;
 export const XP_QUIZ_CORRECT = 15;
 export const XP_QUIZ_PERFECT = 50;
 export const XP_MATCH_WIN = 30;
+export const XP_SRS_REVIEW = 15;
+
+export function getLocalDateString() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export function useGameState() {
   const [state, setState] = useLocalStorage<GameState>('sinhala-puluwanda-v2', DEFAULT_STATE);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateString();
 
-  // Check and update streak on load
+  // Check and update streak on load/render dynamically to ensure UI is correct on first render
   const checkedState = useMemo(() => {
     const s = { ...state };
+    
+    // Schema safety migrations:
+    if (!s.starredWords) s.starredWords = {};
+    if (!s.srsData) s.srsData = {};
+    if (!s.avatar) s.avatar = 'novice';
+
     if (s.dailyGoalDate !== today) {
       s.dailyXpEarned = 0;
       s.dailyGoalDate = today;
+      s.achievements = s.achievements.filter(id => id !== 'daily_goal');
     }
     if (s.lastActiveDate && s.lastActiveDate !== today) {
-      const lastDate = new Date(s.lastActiveDate);
-      const diff = Math.floor((new Date(today).getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+      const lastDate = new Date(s.lastActiveDate + 'T00:00:00');
+      const currentDate = new Date(today + 'T00:00:00');
+      const diff = Math.floor((currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
       if (diff > 1) {
         s.streak = 0;
       }
     }
     return s;
   }, [state, today]);
+
+  // Persist the daily reset changes to localStorage
+  useEffect(() => {
+    if (
+      state.dailyGoalDate !== checkedState.dailyGoalDate ||
+      state.dailyXpEarned !== checkedState.dailyXpEarned ||
+      state.streak !== checkedState.streak ||
+      state.achievements.length !== checkedState.achievements.length ||
+      !state.starredWords ||
+      !state.srsData ||
+      !state.avatar
+    ) {
+      setState(checkedState);
+    }
+  }, [state, checkedState, setState]);
 
   const addXP = useCallback((amount: number) => {
     setState(prev => {
@@ -138,6 +183,13 @@ export function useGameState() {
       const totalWords = Object.values(newWordsLearned).reduce((sum, arr) => sum + arr.length, 0);
       const lessonsStudied = Object.keys(newWordsLearned).length;
 
+      const xpAmount = XP_WORD_LEARNED;
+      const newXp = prev.xp + xpAmount;
+      const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
+      const newDailyXp = (prev.dailyGoalDate === today ? prev.dailyXpEarned : 0) + xpAmount;
+      const isNewDay = prev.lastActiveDate !== today;
+      const newStreak = isNewDay ? prev.streak + 1 : prev.streak;
+
       const newAchievements = [...prev.achievements];
       if (totalWords >= 1 && !newAchievements.includes('first_word')) newAchievements.push('first_word');
       if (totalWords >= 10 && !newAchievements.includes('ten_words')) newAchievements.push('ten_words');
@@ -145,10 +197,43 @@ export function useGameState() {
       if (totalWords >= 144 && !newAchievements.includes('all_words')) newAchievements.push('all_words');
       if (lessonsStudied >= 12 && !newAchievements.includes('all_lessons')) newAchievements.push('all_lessons');
 
-      return { ...prev, wordsLearned: newWordsLearned, achievements: newAchievements };
+      // Check daily goal
+      if (newDailyXp >= prev.dailyGoal && !newAchievements.includes('daily_goal')) {
+        newAchievements.push('daily_goal');
+      }
+      // Check levels
+      if (newLevel >= 5 && !newAchievements.includes('level_5')) newAchievements.push('level_5');
+      if (newLevel >= 10 && !newAchievements.includes('level_10')) newAchievements.push('level_10');
+      // Check streaks
+      if (newStreak >= 3 && !newAchievements.includes('three_streak')) newAchievements.push('three_streak');
+      if (newStreak >= 7 && !newAchievements.includes('seven_streak')) newAchievements.push('seven_streak');
+
+      // Initialize SRS data for this newly learned word
+      const wordKey = `${lessonId}-${wordIndex}`;
+      const newSrsData = { ...(prev.srsData || {}) };
+      if (!newSrsData[wordKey]) {
+        newSrsData[wordKey] = {
+          interval: 1,
+          ease: 2.5,
+          repetitions: 0,
+          nextReview: Date.now() + 1 * 24 * 60 * 60 * 1000, // Due in 1 day
+        };
+      }
+
+      return {
+        ...prev,
+        wordsLearned: newWordsLearned,
+        achievements: newAchievements,
+        xp: newXp,
+        level: newLevel,
+        streak: newStreak,
+        lastActiveDate: today,
+        dailyXpEarned: newDailyXp,
+        dailyGoalDate: today,
+        srsData: newSrsData,
+      };
     });
-    addXP(XP_WORD_LEARNED);
-  }, [setState, addXP]);
+  }, [setState, today]);
 
   const recordQuiz = useCallback((lessonId: number, score: number, total: number) => {
     setState(prev => {
@@ -156,10 +241,28 @@ export function useGameState() {
       const isPerfect = score === total;
       const newPerfect = isPerfect ? prev.perfectScores + 1 : prev.perfectScores;
 
+      const xpAmount = score * XP_QUIZ_CORRECT + (isPerfect ? XP_QUIZ_PERFECT : 0);
+      const newXp = prev.xp + xpAmount;
+      const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
+      const newDailyXp = (prev.dailyGoalDate === today ? prev.dailyXpEarned : 0) + xpAmount;
+      const isNewDay = prev.lastActiveDate !== today;
+      const newStreak = isNewDay ? prev.streak + 1 : prev.streak;
+
       const newAchievements = [...prev.achievements];
       if (!newAchievements.includes('first_quiz')) newAchievements.push('first_quiz');
       if (isPerfect && !newAchievements.includes('perfect_quiz')) newAchievements.push('perfect_quiz');
       if (newQuizzes >= 5 && !newAchievements.includes('five_quizzes')) newAchievements.push('five_quizzes');
+
+      // Check daily goal
+      if (newDailyXp >= prev.dailyGoal && !newAchievements.includes('daily_goal')) {
+        newAchievements.push('daily_goal');
+      }
+      // Check levels
+      if (newLevel >= 5 && !newAchievements.includes('level_5')) newAchievements.push('level_5');
+      if (newLevel >= 10 && !newAchievements.includes('level_10')) newAchievements.push('level_10');
+      // Check streaks
+      if (newStreak >= 3 && !newAchievements.includes('three_streak')) newAchievements.push('three_streak');
+      if (newStreak >= 7 && !newAchievements.includes('seven_streak')) newAchievements.push('seven_streak');
 
       return {
         ...prev,
@@ -167,19 +270,190 @@ export function useGameState() {
         totalQuizzesTaken: newQuizzes,
         perfectScores: newPerfect,
         achievements: newAchievements,
+        xp: newXp,
+        level: newLevel,
+        streak: newStreak,
+        lastActiveDate: today,
+        dailyXpEarned: newDailyXp,
+        dailyGoalDate: today,
       };
     });
-    const xp = score * XP_QUIZ_CORRECT + (score === total ? XP_QUIZ_PERFECT : 0);
-    addXP(xp);
-  }, [setState, addXP]);
+  }, [setState, today]);
 
   const unlockMatchAchievement = useCallback(() => {
     setState(prev => {
-      if (prev.achievements.includes('match_master')) return prev;
-      return { ...prev, achievements: [...prev.achievements, 'match_master'] };
+      const isMatchMaster = prev.achievements.includes('match_master');
+      
+      const xpAmount = XP_MATCH_WIN;
+      const newXp = prev.xp + xpAmount;
+      const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
+      const newDailyXp = (prev.dailyGoalDate === today ? prev.dailyXpEarned : 0) + xpAmount;
+      const isNewDay = prev.lastActiveDate !== today;
+      const newStreak = isNewDay ? prev.streak + 1 : prev.streak;
+
+      const newAchievements = [...prev.achievements];
+      if (!isMatchMaster) {
+        newAchievements.push('match_master');
+      }
+
+      // Check daily goal
+      if (newDailyXp >= prev.dailyGoal && !newAchievements.includes('daily_goal')) {
+        newAchievements.push('daily_goal');
+      }
+      // Check levels
+      if (newLevel >= 5 && !newAchievements.includes('level_5')) newAchievements.push('level_5');
+      if (newLevel >= 10 && !newAchievements.includes('level_10')) newAchievements.push('level_10');
+      // Check streaks
+      if (newStreak >= 3 && !newAchievements.includes('three_streak')) newAchievements.push('three_streak');
+      if (newStreak >= 7 && !newAchievements.includes('seven_streak')) newAchievements.push('seven_streak');
+
+      return {
+        ...prev,
+        achievements: newAchievements,
+        xp: newXp,
+        level: newLevel,
+        streak: newStreak,
+        lastActiveDate: today,
+        dailyXpEarned: newDailyXp,
+        dailyGoalDate: today,
+      };
     });
-    addXP(XP_MATCH_WIN);
-  }, [setState, addXP]);
+  }, [setState, today]);
+
+  // Toggle bookmark / starred word
+  const toggleStarWord = useCallback((lessonId: number, wordIndex: number) => {
+    setState(prev => {
+      const currentStarred = prev.starredWords?.[lessonId] || [];
+      const isStarred = currentStarred.includes(wordIndex);
+      const newStarred = isStarred
+        ? currentStarred.filter(idx => idx !== wordIndex)
+        : [...currentStarred, wordIndex];
+      return {
+        ...prev,
+        starredWords: {
+          ...(prev.starredWords || {}),
+          [lessonId]: newStarred
+        }
+      };
+    });
+  }, [setState]);
+
+  // Review learned word using SuperMemo-2 (SM-2) Spaced Repetition Algorithm
+  // rating: 1 = Again/Forgot, 2 = Hard, 3 = Good, 4 = Easy
+  const reviewSRSWord = useCallback((lessonId: number, wordIndex: number, rating: number) => {
+    setState(prev => {
+      const wordKey = `${lessonId}-${wordIndex}`;
+      const prevSrs = prev.srsData?.[wordKey] || {
+        interval: 1,
+        ease: 2.5,
+        repetitions: 0,
+        nextReview: Date.now()
+      };
+
+      let repetitions = prevSrs.repetitions;
+      let ease = prevSrs.ease;
+      let interval = prevSrs.interval;
+
+      if (rating < 3) {
+        // Forgot the word
+        repetitions = 0;
+        interval = 1; // repeat tomorrow
+      } else {
+        // Correct response
+        if (repetitions === 0) {
+          interval = 1; // 1 day
+        } else if (repetitions === 1) {
+          interval = 4; // 4 days
+        } else {
+          interval = Math.ceil(interval * ease);
+        }
+        repetitions++;
+      }
+
+      // Adjust ease factor (mapping 1..4 quality to SM2 quality 2..5)
+      const quality = rating + 1;
+      ease = ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+      if (ease < 1.3) ease = 1.3;
+
+      const nextReview = Date.now() + interval * 24 * 60 * 60 * 1000;
+
+      const newSrsData = {
+        ...(prev.srsData || {}),
+        [wordKey]: {
+          interval,
+          ease,
+          repetitions,
+          nextReview
+        }
+      };
+
+      // Award XP for SRS review
+      const xpAmount = XP_SRS_REVIEW;
+      const newXp = prev.xp + xpAmount;
+      const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
+      const newDailyXp = (prev.dailyGoalDate === today ? prev.dailyXpEarned : 0) + xpAmount;
+      const isNewDay = prev.lastActiveDate !== today;
+      const newStreak = isNewDay ? prev.streak + 1 : prev.streak;
+
+      const newAchievements = [...prev.achievements];
+      if (newDailyXp >= prev.dailyGoal && !newAchievements.includes('daily_goal')) {
+        newAchievements.push('daily_goal');
+      }
+      if (newLevel >= 5 && !newAchievements.includes('level_5')) newAchievements.push('level_5');
+      if (newLevel >= 10 && !newAchievements.includes('level_10')) newAchievements.push('level_10');
+
+      return {
+        ...prev,
+        xp: newXp,
+        level: newLevel,
+        streak: newStreak,
+        lastActiveDate: today,
+        dailyXpEarned: newDailyXp,
+        dailyGoalDate: today,
+        srsData: newSrsData,
+        achievements: newAchievements,
+      };
+    });
+  }, [setState, today]);
+
+  // Set avatar badge selection
+  const changeAvatar = useCallback((avatarId: string) => {
+    setState(prev => ({
+      ...prev,
+      avatar: avatarId
+    }));
+  }, [setState]);
+
+  // Safe validated import progress state
+  const importProgressState = useCallback((imported: any): boolean => {
+    try {
+      if (!imported || typeof imported !== 'object') return false;
+
+      // Schema checks
+      const hasXP = typeof imported.xp === 'number';
+      const hasLevel = typeof imported.level === 'number';
+      const hasStreak = typeof imported.streak === 'number';
+      const hasWords = imported.wordsLearned && typeof imported.wordsLearned === 'object';
+
+      if (!hasXP || !hasLevel || !hasStreak || !hasWords) {
+        return false;
+      }
+
+      const mergedState: GameState = {
+        ...DEFAULT_STATE,
+        ...imported,
+        xp: Number(imported.xp),
+        level: Number(imported.level),
+        streak: Number(imported.streak),
+      };
+
+      setState(mergedState);
+      return true;
+    } catch (e) {
+      console.error('Import validation failed:', e);
+      return false;
+    }
+  }, [setState]);
 
   const toggleDarkMode = useCallback(() => {
     setState(prev => ({ ...prev, darkMode: !prev.darkMode }));
@@ -193,8 +467,10 @@ export function useGameState() {
     return Object.values(checkedState.wordsLearned).reduce((sum, arr) => sum + arr.length, 0);
   }, [checkedState.wordsLearned]);
 
-  const xpForCurrentLevel = checkedState.xp % XP_PER_LEVEL;
-  const xpProgress = (xpForCurrentLevel / XP_PER_LEVEL) * 100;
+  const xpProgress = useMemo(() => {
+    const xpForCurrentLevel = checkedState.xp % XP_PER_LEVEL;
+    return (xpForCurrentLevel / XP_PER_LEVEL) * 100;
+  }, [checkedState.xp]);
 
   return {
     state: checkedState,
@@ -202,10 +478,13 @@ export function useGameState() {
     learnWord,
     recordQuiz,
     unlockMatchAchievement,
+    toggleStarWord,
+    reviewSRSWord,
+    changeAvatar,
+    importProgressState,
     toggleDarkMode,
     toggleSound,
     totalWordsLearned,
-    xpForCurrentLevel,
     xpProgress,
   };
 }

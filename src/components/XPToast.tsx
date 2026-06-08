@@ -27,7 +27,7 @@ export default function XPToast({ message, xp, show, onDone }: XPToastProps) {
     <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[100] transition-all duration-300 ${
       visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
     }`}>
-      <div className="flex items-center gap-3 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white px-5 py-3 rounded-2xl shadow-xl shadow-saffron-500/30">
+      <div role="status" aria-live="polite" className="flex items-center gap-3 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white px-5 py-3 rounded-2xl shadow-xl shadow-saffron-500/30">
         <span className="text-xl">⚡</span>
         <div>
           <p className="font-semibold text-sm">{message}</p>

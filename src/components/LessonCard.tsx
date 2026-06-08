@@ -35,10 +35,17 @@ export default function LessonCard({ lesson, progress, darkMode, onSelect }: Les
 
       <h3 className={`text-base sm:text-lg font-bold mb-0.5 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{lesson.title}</h3>
       <p className="sinhala-text text-saffron-500 text-xs sm:text-sm font-medium mb-2">{lesson.titleSinhala}</p>
-      <p className={`text-xs sm:text-sm leading-relaxed mb-4 ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>{lesson.description}</p>
+      <p className={`text-xs sm:text-sm leading-relaxed mb-4 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{lesson.description}</p>
 
       <div className="flex items-center gap-3">
-        <div className={`flex-1 h-1.5 sm:h-2 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+        <div 
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Lesson progress: ${progress}%`}
+          className={`flex-1 h-1.5 sm:h-2 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}
+        >
           <div className={`h-full rounded-full bg-gradient-to-r ${lesson.color} transition-all duration-700`} style={{ width: `${progress}%` }} />
         </div>
         <span className={`text-[10px] sm:text-xs font-bold ${progress === 100 ? 'text-leaf-500' : darkMode ? 'text-slate-500' : 'text-slate-400'}`}>

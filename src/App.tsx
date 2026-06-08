@@ -1,56 +1,161 @@
-import { useState, useCallback } from 'react';
-import { useGameState } from './hooks/useGameState';
+import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
+import { useGame } from './contexts/GameContext';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import AlphabetSection from './components/AlphabetSection';
 import LessonsSection from './components/LessonsSection';
-import LessonView from './components/LessonView';
-import QuizView from './components/QuizView';
 import PracticeSection from './components/PracticeSection';
-import WordMatchGame from './components/WordMatchGame';
-import ConversationView from './components/ConversationView';
 import PhraseBuilder from './components/PhraseBuilder';
 import AboutSection from './components/AboutSection';
 import ContactSection from './components/ContactSection';
-import Dashboard from './components/Dashboard';
+import Footer from './components/Footer';
 import Chatbot from './components/Chatbot';
 import XPToast from './components/XPToast';
-import Footer from './components/Footer';
-import { Lesson } from './data/lessons';
+import { Lesson, lessons } from './data/lessons';
 
-type View = 'home' | 'lesson' | 'quiz' | 'dashboard' | 'match-game' | 'conversation';
+// Lazy load heavy views
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const WordMatchGame = lazy(() => import('./components/WordMatchGame'));
+const ConversationView = lazy(() => import('./components/ConversationView'));
+const LessonView = lazy(() => import('./components/LessonView'));
+const QuizView = lazy(() => import('./components/QuizView'));
+const WritingPractice = lazy(() => import('./components/WritingPractice'));
+const FlashcardReview = lazy(() => import('./components/FlashcardReview'));
+
+type View = 'home' | 'lesson' | 'quiz' | 'dashboard' | 'match-game' | 'conversation' | 'writing-practice' | 'flashcards';
+
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-900/5 dark:bg-slate-950/20">
+    <div className="flex flex-col items-center space-y-4">
+      <div className="w-12 h-12 border-4 border-saffron-500 border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">Loading section...</p>
+    </div>
+  </div>
+);
 
 export default function App() {
   const [view, setView] = useState<View>('home');
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
-  const [toast, setToast] = useState({ show: false, message: '', xp: 0 });
+  const [toastQueue, setToastQueue] = useState<{ message: string; xp: number }[]>([]);
+  const [activeToast, setActiveToast] = useState<{ message: string; xp: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [scrollToSection, setScrollToSection] = useState<string | null>(null);
 
   const {
     state, learnWord, recordQuiz, unlockMatchAchievement,
-    toggleDarkMode, totalWordsLearned, xpProgress,
-  } = useGameState();
+    toggleStarWord, reviewSRSWord, changeAvatar, importProgressState,
+    toggleDarkMode, totalWordsLearned, xpProgress, addXP
+  } = useGame();
 
   const darkMode = state.darkMode;
-  if (darkMode) { document.documentElement.classList.add('dark'); }
-  else { document.documentElement.classList.remove('dark'); }
+
+  // Simple hash-based router
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (!hash || hash === '#/' || hash === '#/home') {
+        setView('home');
+        setSelectedLesson(null);
+      } else if (hash === '#/dashboard') {
+        setView('dashboard');
+        setSelectedLesson(null);
+      } else if (hash === '#/match-game') {
+        setView('match-game');
+        setSelectedLesson(null);
+      } else if (hash === '#/conversation') {
+        setView('conversation');
+        setSelectedLesson(null);
+      } else if (hash === '#/writing-practice') {
+        setView('writing-practice');
+        setSelectedLesson(null);
+      } else if (hash === '#/flashcards') {
+        setView('flashcards');
+        setSelectedLesson(null);
+      } else if (hash.startsWith('#/lesson/')) {
+        const id = parseInt(hash.replace('#/lesson/', ''), 10);
+        const found = lessons.find(l => l.id === id);
+        if (found) {
+          setView('lesson');
+          setSelectedLesson(found);
+        } else {
+          window.location.hash = '#/';
+        }
+      } else if (hash.startsWith('#/quiz/')) {
+        const id = parseInt(hash.replace('#/quiz/', ''), 10);
+        const found = lessons.find(l => l.id === id);
+        if (found) {
+          setView('quiz');
+          setSelectedLesson(found);
+        } else {
+          window.location.hash = '#/';
+        }
+      } else {
+        setView('home');
+        setSelectedLesson(null);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Run on initial load
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Handle robust scrollIntoView after navigation/render
+  useEffect(() => {
+    if (view === 'home' && scrollToSection) {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(scrollToSection);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+          setScrollToSection(null);
+        } else {
+          // Retry next frame in case of delayed rendering
+          requestAnimationFrame(() => {
+            const elRetry = document.getElementById(scrollToSection);
+            if (elRetry) {
+              elRetry.scrollIntoView({ behavior: 'smooth' });
+            }
+            setScrollToSection(null);
+          });
+        }
+      });
+    }
+  }, [view, scrollToSection]);
 
   const showToast = useCallback((message: string, xp: number) => {
-    setToast({ show: true, message, xp });
+    setToastQueue(prev => [...prev, { message, xp }]);
+  }, []);
+
+  // Process toast queue
+  useEffect(() => {
+    if (!activeToast && toastQueue.length > 0) {
+      const nextToast = toastQueue[0];
+      setActiveToast(nextToast);
+      setToastQueue(prev => prev.slice(1));
+    }
+  }, [activeToast, toastQueue]);
+
+  const handleToastDone = useCallback(() => {
+    setActiveToast(null);
   }, []);
 
   const handleSelectLesson = useCallback((lesson: Lesson) => {
-    setSelectedLesson(lesson); setView('lesson'); window.scrollTo(0, 0);
+    window.location.hash = `#/lesson/${lesson.id}`;
+    window.scrollTo(0, 0);
   }, []);
 
   const handleBack = useCallback(() => {
-    setView('home'); setSelectedLesson(null);
-    setTimeout(() => document.getElementById('lessons')?.scrollIntoView({ behavior: 'smooth' }), 100);
+    setScrollToSection('lessons');
+    window.location.hash = '#/';
   }, []);
 
   const handleStartQuiz = useCallback(() => {
-    setView('quiz'); window.scrollTo(0, 0);
-  }, []);
+    if (selectedLesson) {
+      window.location.hash = `#/quiz/${selectedLesson.id}`;
+      window.scrollTo(0, 0);
+    }
+  }, [selectedLesson]);
 
   const handleWordLearned = useCallback((lessonId: number, wordIndex: number) => {
     if (!state.wordsLearned[lessonId]?.includes(wordIndex)) {
@@ -68,19 +173,25 @@ export default function App() {
   }, [recordQuiz, selectedLesson, showToast]);
 
   const handleStart = useCallback(() => {
-    document.getElementById('lessons')?.scrollIntoView({ behavior: 'smooth' });
+    const el = document.getElementById('lessons');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
   }, []);
 
   const handleNavigate = useCallback((section: string) => {
     if (section === 'home') {
-      setView('home');
+      window.location.hash = '#/';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (['alphabet', 'lessons', 'practice', 'about', 'contact'].includes(section)) {
       if (view !== 'home') {
-        setView('home');
-        setTimeout(() => document.getElementById(section)?.scrollIntoView({ behavior: 'smooth' }), 150);
+        setScrollToSection(section);
+        window.location.hash = '#/';
       } else {
-        document.getElementById(section)?.scrollIntoView({ behavior: 'smooth' });
+        const el = document.getElementById(section);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     }
   }, [view]);
@@ -89,115 +200,177 @@ export default function App() {
     level: state.level, xp: state.xp, xpProgress,
     streak: state.streak, darkMode,
     onToggleDark: toggleDarkMode, onNavigate: handleNavigate,
-    onOpenDashboard: () => { setView('dashboard'); window.scrollTo(0, 0); },
+    onOpenDashboard: () => { window.location.hash = '#/dashboard'; window.scrollTo(0, 0); },
   };
 
-  const toastEl = <XPToast {...toast} onDone={() => setToast(t => ({ ...t, show: false }))} />;
+  const toastEl = activeToast ? (
+    <XPToast
+      message={activeToast.message}
+      xp={activeToast.xp}
+      show={true}
+      onDone={handleToastDone}
+    />
+  ) : null;
   const chatbotEl = <Chatbot darkMode={darkMode} isOpen={chatOpen} onClose={() => setChatOpen(false)} />;
 
-  // Floating chat button (visible on all views)
+  // Floating chat button (visible on all views, subject to Level 2 lock check)
   const chatFab = !chatOpen && (
     <button
-      onClick={() => setChatOpen(true)}
+      onClick={() => {
+        if (state.level >= 2) {
+          setChatOpen(true);
+        } else {
+          alert('🔒 AI Sinhala Helper is locked. Reach Level 2 to unlock!');
+        }
+      }}
       className="fixed bottom-5 right-5 z-[80] w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-saffron-500 to-saffron-600 rounded-2xl shadow-xl shadow-saffron-500/30 hover:shadow-saffron-500/50 flex items-center justify-center text-2xl sm:text-3xl hover:scale-110 active:scale-95 transition-all duration-300 group"
       aria-label="Open Sinhala Helper Chatbot"
     >
       <span className="group-hover:scale-110 transition-transform">🤖</span>
-      <span className="absolute -top-1 -right-1 w-4 h-4 bg-leaf-500 rounded-full border-2 border-white dark:border-slate-950 flex items-center justify-center">
-        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-      </span>
+      {state.level >= 2 ? (
+        <span className="absolute -top-1 -right-1 w-4 h-4 bg-leaf-500 rounded-full border-2 border-white dark:border-slate-950 flex items-center justify-center">
+          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+        </span>
+      ) : (
+        <span className="absolute -top-1 -right-1 w-4 h-4 bg-slate-500 rounded-full border-2 border-white dark:border-slate-950 flex items-center justify-center text-[8px] font-bold text-white">
+          🔒
+        </span>
+      )}
     </button>
   );
 
-  // ===== Sub-views =====
-  if (view === 'dashboard') {
-    return (
-      <div className={darkMode ? 'bg-slate-950 min-h-screen' : 'min-h-screen'}>
-        <Navbar {...navProps} currentView="dashboard" />
-        <Dashboard
-          darkMode={darkMode} xp={state.xp} level={state.level}
-          streak={state.streak} xpProgress={xpProgress}
-          totalWordsLearned={totalWordsLearned} achievements={state.achievements}
-          totalQuizzes={state.totalQuizzesTaken} perfectScores={state.perfectScores}
-          wordsLearned={state.wordsLearned}
-          dailyXp={state.dailyXpEarned} dailyGoal={state.dailyGoal}
-          onBack={() => { setView('home'); window.scrollTo(0, 0); }}
-        />
-        {toastEl}{chatFab}{chatbotEl}
-      </div>
-    );
-  }
+  // ===== Sub-views rendering with Suspense =====
+  const renderSubView = () => {
+    switch (view) {
+      case 'dashboard':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <Dashboard
+              darkMode={darkMode} xp={state.xp} level={state.level}
+              streak={state.streak} xpProgress={xpProgress}
+              totalWordsLearned={totalWordsLearned} achievements={state.achievements}
+              totalQuizzes={state.totalQuizzesTaken} perfectScores={state.perfectScores}
+              wordsLearned={state.wordsLearned}
+              dailyXp={state.dailyXpEarned} dailyGoal={state.dailyGoal}
+              starredWords={state.starredWords || {}} srsData={state.srsData || {}}
+              avatar={state.avatar || 'novice'}
+              onBack={() => { window.location.hash = '#/'; window.scrollTo(0, 0); }}
+              onToggleStarWord={toggleStarWord}
+              onChangeAvatar={changeAvatar}
+              onImportState={importProgressState}
+            />
+          </Suspense>
+        );
 
-  if (view === 'match-game') {
-    return (
-      <div className={darkMode ? 'bg-slate-950 min-h-screen' : 'min-h-screen'}>
-        <Navbar {...navProps} currentView="match-game" />
-        <WordMatchGame darkMode={darkMode}
-          onComplete={() => { unlockMatchAchievement(); showToast('Match game won! 🃏', 30); }}
-          onBack={() => { setView('home'); setTimeout(() => document.getElementById('practice')?.scrollIntoView({ behavior: 'smooth' }), 100); }}
-        />
-        {toastEl}{chatFab}{chatbotEl}
-      </div>
-    );
-  }
+      case 'match-game':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <WordMatchGame darkMode={darkMode}
+              onComplete={() => { unlockMatchAchievement(); showToast('Match game won! 🃏', 30); }}
+              onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
+            />
+          </Suspense>
+        );
 
-  if (view === 'conversation') {
-    return (
-      <div className={darkMode ? 'bg-slate-950 min-h-screen' : 'min-h-screen'}>
-        <Navbar {...navProps} currentView="conversation" />
-        <ConversationView darkMode={darkMode} soundEnabled={state.soundEnabled}
-          onBack={() => { setView('home'); setTimeout(() => document.getElementById('practice')?.scrollIntoView({ behavior: 'smooth' }), 100); }}
-        />
-        {toastEl}{chatFab}{chatbotEl}
-      </div>
-    );
-  }
+      case 'conversation':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <ConversationView darkMode={darkMode} soundEnabled={state.soundEnabled}
+              onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
+            />
+          </Suspense>
+        );
 
-  if (view === 'lesson' && selectedLesson) {
-    return (
-      <div className={darkMode ? 'bg-slate-950 min-h-screen' : 'min-h-screen'}>
-        <Navbar {...navProps} currentView="lesson" />
-        <LessonView
-          lesson={selectedLesson} darkMode={darkMode} soundEnabled={state.soundEnabled}
-          onBack={handleBack} onStartQuiz={handleStartQuiz}
-          onWordLearned={handleWordLearned}
-          learnedWords={state.wordsLearned[selectedLesson.id] || []}
-        />
-        {toastEl}{chatFab}{chatbotEl}
-      </div>
-    );
-  }
+      case 'lesson':
+        if (!selectedLesson) return <LoadingFallback />;
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <LessonView
+              lesson={selectedLesson} darkMode={darkMode} soundEnabled={state.soundEnabled}
+              onBack={handleBack} onStartQuiz={handleStartQuiz}
+              onWordLearned={handleWordLearned}
+              learnedWords={state.wordsLearned[selectedLesson.id] || []}
+              starredWords={state.starredWords || {}}
+              onToggleStarWord={toggleStarWord}
+            />
+          </Suspense>
+        );
 
-  if (view === 'quiz' && selectedLesson) {
-    return (
-      <div className={darkMode ? 'bg-slate-950 min-h-screen' : 'min-h-screen'}>
-        <Navbar {...navProps} currentView="quiz" />
-        <QuizView lesson={selectedLesson} darkMode={darkMode}
-          onBack={() => { setView('lesson'); window.scrollTo(0, 0); }}
-          onComplete={handleQuizComplete}
-        />
-        {toastEl}{chatFab}{chatbotEl}
-      </div>
-    );
-  }
+      case 'quiz':
+        if (!selectedLesson) return <LoadingFallback />;
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <QuizView lesson={selectedLesson} darkMode={darkMode}
+              onBack={() => { window.location.hash = `#/lesson/${selectedLesson.id}`; window.scrollTo(0, 0); }}
+              onComplete={handleQuizComplete}
+            />
+          </Suspense>
+        );
 
-  // ===== HOME VIEW =====
+      case 'writing-practice':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <WritingPractice
+              darkMode={darkMode}
+              soundEnabled={state.soundEnabled}
+              onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
+              onAwardXP={addXP}
+            />
+          </Suspense>
+        );
+
+      case 'flashcards':
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            <FlashcardReview
+              darkMode={darkMode}
+              soundEnabled={state.soundEnabled}
+              state={state}
+              onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
+              onReviewWord={reviewSRSWord}
+              onAwardXP={addXP}
+            />
+          </Suspense>
+        );
+
+      case 'home':
+      default:
+        return (
+          <>
+            <Hero onStart={handleStart} totalWords={totalWordsLearned} level={state.level} streak={state.streak} />
+            <AlphabetSection darkMode={darkMode} soundEnabled={state.soundEnabled} />
+            <LessonsSection onSelectLesson={handleSelectLesson} progress={state.wordsLearned} darkMode={darkMode} />
+            <PracticeSection darkMode={darkMode} level={state.level}
+              onOpenGame={() => { window.location.hash = '#/match-game'; window.scrollTo(0, 0); }}
+              onOpenConversation={() => { window.location.hash = '#/conversation'; window.scrollTo(0, 0); }}
+              onOpenWritingPractice={() => { window.location.hash = '#/writing-practice'; window.scrollTo(0, 0); }}
+              onOpenFlashcards={() => { window.location.hash = '#/flashcards'; window.scrollTo(0, 0); }}
+              onOpenChatbot={() => {
+                if (state.level >= 2) {
+                  setChatOpen(true);
+                } else {
+                  alert('🔒 AI Sinhala Helper is locked. Reach Level 2 to unlock!');
+                }
+              }}
+            />
+            <PhraseBuilder darkMode={darkMode} soundEnabled={state.soundEnabled} />
+            <AboutSection darkMode={darkMode} />
+            <ContactSection darkMode={darkMode} />
+          </>
+        );
+    }
+  };
+
   return (
-    <div className={`relative ${darkMode ? 'bg-slate-950' : ''}`}>
-      <Navbar {...navProps} currentView="home" />
-      <Hero onStart={handleStart} darkMode={darkMode} totalWords={totalWordsLearned} level={state.level} streak={state.streak} />
-      <AlphabetSection darkMode={darkMode} soundEnabled={state.soundEnabled} />
-      <LessonsSection onSelectLesson={handleSelectLesson} progress={state.wordsLearned} darkMode={darkMode} />
-      <PracticeSection darkMode={darkMode}
-        onOpenGame={() => { setView('match-game'); window.scrollTo(0, 0); }}
-        onOpenConversation={() => { setView('conversation'); window.scrollTo(0, 0); }}
-        onOpenChatbot={() => setChatOpen(true)}
-      />
-      <PhraseBuilder darkMode={darkMode} soundEnabled={state.soundEnabled} />
-      <AboutSection darkMode={darkMode} />
-      <ContactSection darkMode={darkMode} />
-      <Footer darkMode={darkMode} onNavigate={handleNavigate} />
-      {toastEl}{chatFab}{chatbotEl}
+    <div className={`relative min-h-screen ${darkMode ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>
+      <Navbar {...navProps} currentView={view} />
+      <main id="main-content" className="outline-none">
+        {renderSubView()}
+      </main>
+      {view === 'home' && <Footer darkMode={darkMode} onNavigate={handleNavigate} />}
+      {toastEl}
+      {chatFab}
+      {chatbotEl}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { APP_VERSION } from '../constants';
 
 interface NavbarProps {
   level: number;
@@ -11,6 +12,15 @@ interface NavbarProps {
   onOpenDashboard: () => void;
   currentView: string;
 }
+
+const NAV_LINKS = [
+  { label: 'Home', id: 'home', icon: '🏠' },
+  { label: 'Alphabet', id: 'alphabet', icon: '📖' },
+  { label: 'Lessons', id: 'lessons', icon: '📚' },
+  { label: 'Practice', id: 'practice', icon: '🎮' },
+  { label: 'About', id: 'about', icon: '👤' },
+  { label: 'Contact', id: 'contact', icon: '✉️' },
+];
 
 export default function Navbar({ level, xp, xpProgress, streak, darkMode, onToggleDark, onNavigate, onOpenDashboard, currentView }: NavbarProps) {
   const [showMobile, setShowMobile] = useState(false);
@@ -29,16 +39,31 @@ export default function Navbar({ level, xp, xpProgress, streak, darkMode, onTogg
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const isHero = currentView === 'home' && !scrolled;
+  // Escape key closes mobile menu
+  useEffect(() => {
+    if (!showMobile) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowMobile(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showMobile]);
 
-  const navLinks = [
-    { label: 'Home', id: 'home', icon: '🏠' },
-    { label: 'Alphabet', id: 'alphabet', icon: '📖' },
-    { label: 'Lessons', id: 'lessons', icon: '📚' },
-    { label: 'Practice', id: 'practice', icon: '🎮' },
-    { label: 'About', id: 'about', icon: '👤' },
-    { label: 'Contact', id: 'contact', icon: '✉️' },
-  ];
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (showMobile) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showMobile]);
+
+  const isHero = currentView === 'home' && !scrolled;
 
   const textColor = isHero
     ? 'text-white/80 hover:text-white'
@@ -59,19 +84,19 @@ export default function Navbar({ level, xp, xpProgress, streak, darkMode, onTogg
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-saffron-400 to-saffron-600 flex items-center justify-center shadow-lg shadow-saffron-500/25 group-hover:shadow-saffron-500/40 group-hover:scale-110 transition-all duration-300">
               <span className="text-white text-xs font-bold sinhala-text">සිං</span>
             </div>
-            <div className="hidden sm:block">
+            <div className="hidden sm:block text-left">
               <span className={`font-bold text-sm font-space tracking-tight ${isHero ? 'text-white' : darkMode ? 'text-white' : 'text-slate-900'}`}>
                 Sinhala Puluwanda
               </span>
               <span className={`block text-[10px] font-medium -mt-0.5 ${isHero ? 'text-saffron-300/80' : 'text-saffron-500'}`}>
-v6.1.3
+                v{APP_VERSION}
               </span>
             </div>
           </button>
 
           {/* Center nav — desktop */}
           <div className="hidden lg:flex items-center gap-0.5 px-2 py-1.5 rounded-2xl">
-            {navLinks.map(link => (
+            {NAV_LINKS.map(link => (
               <button
                 key={link.id}
                 onClick={() => onNavigate(link.id)}
@@ -100,7 +125,7 @@ v6.1.3
                 </span>
               </div>
               <div className={`w-14 h-1.5 rounded-full overflow-hidden ${isHero ? 'bg-white/15' : darkMode ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                <div className="h-full bg-gradient-to-r from-saffron-400 to-saffron-500 rounded-full transition-all duration-700" style={{ width: `${xpProgress}%` }} />
+                <div role="progressbar" aria-valuenow={xpProgress} aria-valuemin={0} aria-valuemax={100} aria-label="XP level progress" className="h-full bg-gradient-to-r from-saffron-400 to-saffron-500 rounded-full transition-all duration-700" style={{ width: `${xpProgress}%` }} />
               </div>
               <span className={`text-[10px] font-medium ${isHero ? 'text-white/50' : darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{xp}</span>
             </button>
@@ -134,6 +159,7 @@ v6.1.3
               onClick={() => setShowMobile(!showMobile)}
               className={`lg:hidden p-2 rounded-xl transition-all ${isHero ? 'text-white' : darkMode ? 'text-white' : 'text-slate-900'}`}
               aria-label="Menu"
+              aria-expanded={showMobile}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {showMobile
@@ -168,7 +194,7 @@ v6.1.3
                     <span className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{xp} XP</span>
                   </div>
                   <div className={`h-2 rounded-full overflow-hidden ${darkMode ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                    <div className="h-full bg-gradient-to-r from-saffron-400 to-saffron-500 rounded-full transition-all duration-700" style={{ width: `${xpProgress}%` }} />
+                    <div role="progressbar" aria-valuenow={xpProgress} aria-valuemin={0} aria-valuemax={100} aria-label="XP level progress" className="h-full bg-gradient-to-r from-saffron-400 to-saffron-500 rounded-full transition-all duration-700" style={{ width: `${xpProgress}%` }} />
                   </div>
                 </div>
                 {streak > 0 && <div className="flex items-center gap-0.5"><span className="text-sm">🔥</span><span className="text-sm font-bold text-orange-500">{streak}</span></div>}
@@ -177,7 +203,7 @@ v6.1.3
 
             {/* Nav links */}
             <nav className="flex-1 space-y-1">
-              {navLinks.map(link => (
+              {NAV_LINKS.map(link => (
                 <button
                   key={link.id}
                   onClick={() => { onNavigate(link.id); setShowMobile(false); }}
@@ -202,7 +228,7 @@ v6.1.3
 
             {/* Bottom of drawer */}
             <div className={`pt-4 border-t mt-4 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-              <div className="sinhala-text text-saffron-500 text-sm font-medium text-center">සිංහල පුළුවන්ද? v6.1.3</div>
+              <div className="sinhala-text text-saffron-500 text-sm font-medium text-center">සිංහල පුළුවන්ද? v{APP_VERSION}</div>
             </div>
           </div>
         </div>

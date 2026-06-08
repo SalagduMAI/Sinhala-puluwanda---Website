@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Lesson, QuizQuestion, generateQuiz } from '../data/lessons';
 
 interface QuizViewProps {
@@ -18,32 +18,65 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
   const [streak, setStreak] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
 
+  const hasAnsweredRef = useRef(false);
+  const finalScoreRef = useRef(0);
+
   useEffect(() => {
     setQuestions(generateQuiz(lesson.id));
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setIsCorrect(null);
+    setScore(0);
+    setStreak(0);
+    setIsFinished(false);
+    setShowConfetti(false);
+    hasAnsweredRef.current = false;
+    finalScoreRef.current = 0;
   }, [lesson.id]);
+
+  useEffect(() => {
+    hasAnsweredRef.current = false;
+  }, [currentIndex]);
+
+  const confettiParticles = useMemo(() => {
+    if (!showConfetti) return [];
+    return Array.from({ length: 30 }).map(() => ({
+      left: `${Math.random() * 100}%`,
+      color: ['#ff7d07', '#22c55e', '#3b82f6', '#f59e0b', '#ef4444'][Math.floor(Math.random() * 5)],
+      duration: `${2 + Math.random() * 3}s`,
+      delay: `${Math.random() * 1}s`,
+    }));
+  }, [showConfetti]);
 
   if (questions.length === 0) return null;
 
   const currentQuestion = questions[currentIndex];
 
   const handleAnswer = (index: number) => {
-    if (selectedAnswer !== null) return;
+    if (hasAnsweredRef.current || selectedAnswer !== null) return;
+    hasAnsweredRef.current = true;
     setSelectedAnswer(index);
     const correct = index === currentQuestion.correctIndex;
     setIsCorrect(correct);
     if (correct) {
-      setScore(s => s + 1);
+      setScore(s => {
+        const nextScore = s + 1;
+        finalScoreRef.current = nextScore;
+        return nextScore;
+      });
       setStreak(s => s + 1);
     } else {
       setStreak(0);
+      finalScoreRef.current = score;
     }
   };
 
   const handleNext = () => {
     if (currentIndex + 1 >= questions.length) {
       setIsFinished(true);
-      if (score === questions.length) setShowConfetti(true);
-      onComplete(score + (isCorrect ? 0 : 0), questions.length); // score already updated
+      const finalScore = finalScoreRef.current;
+      if (finalScore === questions.length) setShowConfetti(true);
+      onComplete(finalScore, questions.length);
     } else {
       setCurrentIndex(i => i + 1);
       setSelectedAnswer(null);
@@ -60,6 +93,8 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
     setStreak(0);
     setIsFinished(false);
     setShowConfetti(false);
+    hasAnsweredRef.current = false;
+    finalScoreRef.current = 0;
   };
 
   if (isFinished) {
@@ -72,16 +107,16 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
       <div className={`min-h-screen flex items-center justify-center px-4 ${darkMode ? 'bg-slate-950' : 'bg-gradient-to-b from-slate-50 to-white'}`}>
         {/* Confetti */}
         {showConfetti && (
-          <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-            {Array.from({ length: 30 }).map((_, i) => (
+          <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden" aria-hidden="true">
+            {confettiParticles.map((p, i) => (
               <div
                 key={i}
                 className="absolute w-3 h-3 rounded-sm"
                 style={{
-                  left: `${Math.random() * 100}%`,
-                  backgroundColor: ['#ff7d07', '#22c55e', '#3b82f6', '#f59e0b', '#ef4444'][Math.floor(Math.random() * 5)],
-                  animation: `confetti-fall ${2 + Math.random() * 3}s ease-in forwards`,
-                  animationDelay: `${Math.random() * 1}s`,
+                  left: p.left,
+                  backgroundColor: p.color,
+                  animation: `confetti-fall ${p.duration} ease-in forwards`,
+                  animationDelay: p.delay,
                 }}
               />
             ))}
@@ -92,10 +127,10 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
           <div className={`rounded-3xl p-8 text-center ${
             darkMode ? 'bg-slate-900 border border-slate-800 shadow-2xl' : 'bg-white border border-slate-200 shadow-xl'
           }`}>
-            <span className="text-7xl block mb-4">{emoji}</span>
+            <span className="text-7xl block mb-4" role="img" aria-label="emoji">{emoji}</span>
             <h2 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{message}</h2>
             <p className={`mb-6 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              {lesson.title} — <span className="sinhala-text">{lesson.titleSinhala}</span>
+              {lesson.title} — <span className="sinhala-text" lang="si">{lesson.titleSinhala}</span>
             </p>
 
             <div className={`rounded-2xl p-6 mb-4 ${
@@ -103,7 +138,7 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
             }`}>
               <p className="text-5xl font-bold text-saffron-500 mb-1">{score}/{questions.length}</p>
               <p className={`text-sm font-medium ${darkMode ? 'text-saffron-400/60' : 'text-saffron-500'}`}>Correct Answers</p>
-              <div className={`mt-3 h-3 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-saffron-200'}`}>
+              <div className={`mt-3 h-3 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-saffron-200'}`} role="progressbar" aria-valuenow={percentage} aria-valuemin={0} aria-valuemax={100} aria-label="Quiz completion percentage">
                 <div
                   className="h-full bg-gradient-to-r from-saffron-400 to-saffron-600 rounded-full transition-all duration-1000"
                   style={{ width: `${percentage}%` }}
@@ -138,7 +173,7 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
       <div className={`bg-gradient-to-r ${lesson.color} pt-20 pb-6 px-4`}>
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <button onClick={onBack} className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
+            <button onClick={onBack} className="flex items-center gap-2 text-white/80 hover:text-white transition-colors" aria-label="Exit Quiz">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -155,7 +190,7 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
               </span>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2" role="progressbar" aria-valuenow={currentIndex} aria-valuemin={0} aria-valuemax={questions.length} aria-label="Questions progress">
             {questions.map((_, i) => (
               <div key={i} className={`h-2 flex-1 rounded-full transition-all duration-300 ${
                 i < currentIndex ? 'bg-white' : i === currentIndex ? 'bg-white/60' : 'bg-white/20'
@@ -178,13 +213,13 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
               {currentQuestion.question}
             </h2>
             {currentQuestion.questionSinhala && (
-              <p className="sinhala-text text-4xl text-saffron-500 font-bold mt-3">
+              <p className="sinhala-text text-4xl text-saffron-500 font-bold mt-3" lang="si">
                 {currentQuestion.questionSinhala}
               </p>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto">
+          <div role="radiogroup" aria-label="Quiz Options" className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto">
             {currentQuestion.options.map((option, index) => {
               let classes = darkMode
                 ? 'bg-slate-900 border-2 border-slate-800 hover:border-saffron-700 text-slate-300'
@@ -211,6 +246,8 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
                   key={index}
                   onClick={() => handleAnswer(index)}
                   disabled={selectedAnswer !== null}
+                  role="radio"
+                  aria-checked={selectedAnswer === index}
                   className={`${classes} rounded-2xl p-5 text-left transition-all duration-300 ${
                     selectedAnswer === null ? 'active:scale-95 cursor-pointer' : 'cursor-default'
                   }`}
@@ -229,7 +266,7 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
                     </span>
                     <span className={`font-semibold ${
                       currentQuestion.type === 'english-to-sinhala' ? 'sinhala-text text-xl' : 'text-base'
-                    }`}>
+                    }`} lang={currentQuestion.type === 'english-to-sinhala' ? 'si' : undefined}>
                       {option}
                     </span>
                   </div>
@@ -244,7 +281,7 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
                 isCorrect
                   ? darkMode ? 'bg-leaf-900/30 text-leaf-400' : 'bg-leaf-100 text-leaf-700'
                   : darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'
-              }`}>
+              }`} role="alert">
                 {isCorrect ? '🎉 Correct! +15 XP' : '❌ Not quite!'}
               </div>
               <br />
@@ -261,3 +298,4 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
     </div>
   );
 }
+

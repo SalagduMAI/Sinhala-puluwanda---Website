@@ -14,7 +14,7 @@ export default function ConversationView({ darkMode, soundEnabled, onBack }: Con
   const [showTransliteration, setShowTransliteration] = useState(true);
   const { speak, isSupported } = useSpeech();
 
-  const convo = conversations[activeConvo];
+  const convo = conversations[activeConvo] || conversations[0];
 
   const revealNext = () => {
     const nextIndex = revealedLines.size;
@@ -117,7 +117,7 @@ export default function ConversationView({ darkMode, soundEnabled, onBack }: Con
                     <div className="flex-1">
                       <p className={`sinhala-text text-lg font-semibold mb-1 ${
                         isA ? darkMode ? 'text-white' : 'text-slate-900' : 'text-white'
-                      }`}>
+                      }`} lang="si">
                         {line.sinhala}
                       </p>
                       {showTransliteration && (

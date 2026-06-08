@@ -92,7 +92,7 @@ export default function PhraseBuilder({ darkMode, soundEnabled }: PhraseBuilderP
             🗣️ Practical Phrases
           </span>
           <h2 className={`text-4xl md:text-5xl font-bold mb-3 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-            <span className="sinhala-text">ප්‍රයෝජනවත් වාක්‍ය</span>
+            <span className="sinhala-text" lang="si">ප්‍රයෝජනවත් වාක්‍ය</span>
           </h2>
           <p className={`text-xl ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Useful Phrases for Travelers</p>
         </div>
@@ -131,7 +131,7 @@ export default function PhraseBuilder({ darkMode, soundEnabled }: PhraseBuilderP
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <p className={`sinhala-text text-xl font-semibold mb-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <p className={`sinhala-text text-xl font-semibold mb-1 ${darkMode ? 'text-white' : 'text-slate-900'}`} lang="si">
                     {phrase.sinhala}
                   </p>
                   <p className={`text-sm italic ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{phrase.transliteration}</p>
@@ -142,7 +142,7 @@ export default function PhraseBuilder({ darkMode, soundEnabled }: PhraseBuilderP
                 <div className="flex items-center gap-2">
                   {soundEnabled && isSupported && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); speak(phrase.sinhala); }}
+                      onClick={(e) => { e.stopPropagation(); speak(phrase.sinhala, phrase.transliteration); }}
                       className={`p-2 rounded-lg ${darkMode ? 'hover:bg-slate-800 text-slate-500' : 'hover:bg-slate-100 text-slate-400'}`}
                     >
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

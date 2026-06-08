@@ -160,8 +160,8 @@ export const lessons: Lesson[] = [
     words: [
       { sinhala: 'කොහේද?', transliteration: 'kohēda?', english: 'Where?', example: 'බස් නැවතුම්පොළ කොහේද?', exampleTranslation: 'Where is the bus stop?' },
       { sinhala: 'ඉදිරියට යන්න', transliteration: 'idiriyaṭa yanna', english: 'Go straight', example: 'ඉදිරියට යන්න, ඊට පස්සේ වමට', exampleTranslation: 'Go straight, then turn left' },
-      { sinhala: 'වමට හැරෙන්න', transliteration: 'vamaṭa hærenna', english: 'Turn left' },
-      { sinhala: 'දකුණට හැරෙන්න', transliteration: 'dakuṇaṭa hærenna', english: 'Turn right' },
+      { sinhala: 'වමට හැරෙන්න', transliteration: 'vamaṭa hærenna', english: 'Turn left', example: 'ඊළඟ හන්දියෙන් වමට හැරෙන්න', exampleTranslation: 'Turn left at the next junction' },
+      { sinhala: 'දකුණට හැරෙන්න', transliteration: 'dakuṇaṭa hærenna', english: 'Turn right', example: 'පන්සල ළඟින් දකුණට හැරෙන්න', exampleTranslation: 'Turn right near the temple' },
       { sinhala: 'මෙතන නවත්තන්න', transliteration: 'methana navaththanna', english: 'Stop here', example: 'කරුණාකරලා මෙතන නවත්තන්න', exampleTranslation: 'Please stop here' },
       { sinhala: 'කොච්චර දුරද?', transliteration: 'kochchara durada?', english: 'How far is it?', example: 'කොළඹට කොච්චර දුරද?', exampleTranslation: 'How far is it to Colombo?' },
       { sinhala: 'ත්‍රී වීල් එකක්', transliteration: 'thrī vīl ekak', english: 'A tuk-tuk / three-wheeler', example: 'මට ත්‍රී වීල් එකක් ඕනේ', exampleTranslation: 'I need a tuk-tuk' },
@@ -231,7 +231,7 @@ export const lessons: Lesson[] = [
     difficulty: 'intermediate',
     words: [
       { sinhala: 'ඔයාගේ නම මොකද?', transliteration: 'oyāgē nama mokada?', english: 'What is your name?', example: 'ආයුබෝවන්! ඔයාගේ නම මොකද?', exampleTranslation: 'Hello! What is your name?' },
-      { sinhala: 'ඔබව දැකීම සතුටක්', transliteration: 'obava dækīma sathutakǃ', english: 'Nice to meet you' },
+      { sinhala: 'ඔබව දැකීම සතුටක්', transliteration: 'obava dækīma sathutakǃ', english: 'Nice to meet you', example: 'ආයුබෝවන්, ඔබව දැකීම සතුටක්!', exampleTranslation: 'Hello, nice to meet you!' },
       { sinhala: 'ඔයා කොහෙන්ද?', transliteration: 'oyā kohenda?', english: 'Where are you from?', example: 'ඔයා මුලින්ම කොහෙන්ද?', exampleTranslation: 'Where are you originally from?' },
       { sinhala: 'මම ... වලින්', transliteration: 'mama ... valin', english: 'I am from ...', example: 'මම ඕස්ට්‍රේලියාවෙන්', exampleTranslation: 'I am from Australia' },
       { sinhala: 'අපි යාළුවෝ', transliteration: 'api yāḷuvō', english: 'We are friends', example: 'දැන් අපි හොඳ යාළුවෝ!', exampleTranslation: 'Now we are good friends!' },
@@ -332,7 +332,7 @@ export const lessons: Lesson[] = [
       { sinhala: 'මට කැමතියි', transliteration: 'maṭa kæmathiyi', english: 'I like it', example: 'මට ලංකාවේ කෑම වලට කැමතියි', exampleTranslation: 'I like Sri Lankan food' },
       { sinhala: 'මට කැමති නැහැ', transliteration: 'maṭa kæmathi næhæ', english: 'I don\'t like it', example: 'මට මිරිස් කෑම වලට කැමති නැහැ', exampleTranslation: 'I don\'t like spicy food' },
       { sinhala: 'මම එකඟයි', transliteration: 'mama ekangayi', english: 'I agree', example: 'ඔව්, මම හරියටම එකඟයි', exampleTranslation: 'Yes, I completely agree' },
-      { sinhala: 'මම එකඟ නැහැ', transliteration: 'mama ekanga næhæ', english: 'I disagree' },
+      { sinhala: 'මම එකඟ නැහැ', transliteration: 'mama ekanga næhæ', english: 'I disagree', example: 'මම ඒ අදහසට එකඟ නැහැ', exampleTranslation: 'I disagree with that idea' },
       { sinhala: 'ඉතාම හොඳයි', transliteration: 'ithāma hoňdayi', english: 'Very good / Excellent', example: 'ඔයාගේ සිංහල ඉතාම හොඳයි!', exampleTranslation: 'Your Sinhala is very good!' },
       { sinhala: 'ඒක හරි', transliteration: 'ēka hari', english: 'That\'s right / correct', example: 'ඔව්, ඒක හරි!', exampleTranslation: 'Yes, that\'s right!' },
       { sinhala: 'මට පුදුමයි', transliteration: 'maṭa pudumayi', english: 'I am surprised', example: 'මේ ප්‍රමාණයට මට පුදුමයි', exampleTranslation: 'I am surprised by the size' },
@@ -390,31 +390,52 @@ export const lessons: Lesson[] = [
   },
 ];
 
+export const TOTAL_WORDS = lessons.reduce((sum, l) => sum + l.words.length, 0);
+
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export function generateQuiz(lessonId: number): QuizQuestion[] {
   const lesson = lessons.find(l => l.id === lessonId);
   if (!lesson) return [];
   const questions: QuizQuestion[] = [];
-  const words = [...lesson.words];
-  const questionCount = Math.min(5, words.length);
+  const shuffledWords = shuffleArray(lesson.words);
+  const questionCount = Math.min(5, shuffledWords.length);
+  
   for (let i = 0; i < questionCount; i++) {
-    const wordIndex = Math.floor(Math.random() * words.length);
-    const word = words[wordIndex];
-    words.splice(wordIndex, 1);
+    const word = shuffledWords[i];
     const isSinhalaToEnglish = Math.random() > 0.5;
+    const otherWords = lesson.words.filter(w => w.sinhala !== word.sinhala);
+    const shuffledOthers = shuffleArray(otherWords).slice(0, 3);
+    
     if (isSinhalaToEnglish) {
-      const otherWords = lesson.words.filter(w => w.sinhala !== word.sinhala);
-      const shuffled = otherWords.sort(() => Math.random() - 0.5).slice(0, 3);
-      const options = shuffled.map(w => w.english);
+      const options = shuffledOthers.map(w => w.english);
       const correctIndex = Math.floor(Math.random() * 4);
       options.splice(correctIndex, 0, word.english);
-      questions.push({ question: 'What does this mean?', questionSinhala: word.sinhala, options, correctIndex, type: 'sinhala-to-english' });
+      questions.push({
+        question: 'What does this mean?',
+        questionSinhala: word.sinhala,
+        options,
+        correctIndex,
+        type: 'sinhala-to-english'
+      });
     } else {
-      const otherWords = lesson.words.filter(w => w.sinhala !== word.sinhala);
-      const shuffled = otherWords.sort(() => Math.random() - 0.5).slice(0, 3);
-      const options = shuffled.map(w => w.sinhala);
+      const options = shuffledOthers.map(w => w.sinhala);
       const correctIndex = Math.floor(Math.random() * 4);
       options.splice(correctIndex, 0, word.sinhala);
-      questions.push({ question: `How do you say "${word.english}" in Sinhala?`, questionSinhala: '', options, correctIndex, type: 'english-to-sinhala' });
+      questions.push({
+        question: `How do you say "${word.english}" in Sinhala?`,
+        questionSinhala: '',
+        options,
+        correctIndex,
+        type: 'english-to-sinhala'
+      });
     }
   }
   return questions;

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { lessons, alphabet } from '../data/lessons';
 
 interface ChatbotProps {
@@ -8,7 +8,7 @@ interface ChatbotProps {
 }
 
 interface Message {
-  id: number;
+  id: string;
   role: 'user' | 'bot';
   text: string;
   image?: string;
@@ -24,8 +24,8 @@ const survivalGuides: Record<string, string> = {
   scam: '⚠️ **Common Scams & How to Avoid:**\n\n1. **"Temple is closed"** — Locals redirect you to a shop. Temple is NEVER closed during hours.\n2. **Gem scam** — "Special price just for you" gems worth nothing. Only buy from certified dealers.\n3. **Tuk-tuk detour** — Driver takes you to "friend\'s shop." Say **නැහැ, මට යන්න ඕනේ** (No, I need to go)\n4. **Currency tricks** — Count your change carefully. Know the denominations.\n5. **"Free" tour guide** — Then demands money. Agree price first or decline.\n\n💡 **Key phrase:** **මට ඕනේ නැහැ, ස්තුතියි** = "I don\'t need it, thanks"',
   temple: '🛕 **Temple Etiquette (VERY IMPORTANT):**\n\n1. ✅ **Remove shoes** = සපත්තු මුත්තන්න (sapaththu muththanna)\n2. ✅ Cover shoulders and knees\n3. ✅ No hats or sunglasses\n4. ✅ Walk clockwise around stupas\n5. ✅ Don\'t point feet at Buddha statues\n6. ✅ Don\'t pose with your back to Buddha\n7. ✅ Sit lower than monks\n8. ✅ Ask before photos: **ඡායාරූපයක් ගන්න පුළුවන්ද?**\n\n🙏 Say **සාදු සාදු සාදු** (sādhu sādhu sādhu) — like "amen"\n\n⚠️ Buddha tattoos can get you DEPORTED from Sri Lanka!',
   food_safety: '🍛 **Food & Water Safety:**\n\n✅ **Safe to eat:**\n• Restaurant rice & curry (freshly cooked)\n• Kottu roti from busy places\n• Fresh fruit (peel yourself)\n• Bottled water (check seal)\n• Hot tea/coffee\n\n⚠️ **Be careful:**\n• Street food from very quiet stalls\n• Tap water (NEVER drink)\n• Ice in cheap restaurants\n• Pre-cut fruit from vendors\n• Buffets sitting in the sun\n\n**Useful phrases:**\n• No ice = **අයිස් එපා** (ais epā)\n• Bottled water = **බෝතල් වතුර** (bōthal vathura)\n• Is this spicy? = **මේක කටු ද?** (mēka kaṭuda?)\n• Less spicy = **මිරිස් අඩුවෙන්** (miris aḍuven)',
-  money: '💰 **Money Guide for Sri Lanka:**\n\n**Currency:** Sri Lankan Rupee (LKR)\n~1 USD = ~325 LKR (check current rate)\n\n**Tips:**\n• ATMs everywhere — use Commercial Bank, HNB\n• Visa/Mastercard accepted at most hotels/shops\n• Always carry cash for tuk-tuks, small shops, temples\n• Tip 10% at restaurants\n• Round up tuk-tuk fare\n\n**Key phrases:**\n• How much? = **කීයද?** (kīyada?)\n• Too expensive = **ගොඩක් වැඩියි** (goḍak vædiyi)\n• Do you take cards? = **කාඩ් පත ගන්නවද?** (kāḍ patha gannavada?)\n• Change/coins = **සිල්ලර** (sillara)\n• Receipt = **රිසිට්පත** (risiṭpatha)',
-  first_day: '🌴 **Your First Day in Sri Lanka — Cheat Sheet:**\n\n**Morning:**\n1. 🙏 Say **ආයුබෝවන්** (āyubōvan) to everyone = Hello\n2. ☕ Order tea: **කිරි තේ එකක්** (kiri thē ekak) = Milk tea\n3. 💰 Know: 1 USD ≈ 325 LKR\n\n**Getting Around:**\n4. 🛺 Tuk-tuk: **මීටරය දාන්න** = Use the meter!\n5. 🗺️ Where? = **කොහේද?** (kohēda?)\n\n**Eating:**\n6. 🍛 **බත් සහ කරි** = Rice & curry\n7. 🌶️ **මිරිස් අඩුවෙන්** = Less spicy please\n8. 💧 **බෝතල් වතුර** = Bottled water\n\n**Essentials:**\n9. ✅ **ස්තූතියි** = Thank you\n10. ❌ **නැහැ** = No\n11. 🆘 **උදව් කරන්න** = Help me\n12. 😅 **මට තේරෙන්නේ නැහැ** = I don\'t understand\n\n💡 Smile! Sri Lankans are the friendliest people!',
+  money: '💰 **Money Guide for Sri Lanka:**\n\n**Currency:** Sri Lankan Rupee (LKR)\n~1 USD = ~325 LKR (check current rate)\n\n**Tips:**\n• ATMs everywhere — use Commercial Bank, HNB\n• Visa/Mastercard accepted at most hotels/shops\n• Always carry cash for tuk-tuks, small shops, temples\n• Tip 10% at restaurants\n• Round up tuk-tuk fare\n\n**Key phrases:**\n• How much? = **කීයද?** (kīyada?)\n• Too expensive = **ගොඩක් වැඩියි** (goḍak vædiyi)\n• Do you take cards? = **කාඩ් පත ගන්නවද?** (kāඩ් patha gannavada?)\n• Change/coins = **සිල්ලර** (sillara)\n• Receipt = **රිසිට්පත** (risiṭpatha)',
+  first_day: '🌴 **Your First Day in Sri Lanka — Cheat Sheet:**\n\n**Morning:**\n1. 🙏 Say **ආයුබෝවන්** (āyubōvan) to everyone = Hello\n2. ☕ Order tea: **කිරි තේ එකක්** (kiri thē ekak) = Milk tea\n3. 💰 Know: 1 USD ≈ 325 LKR\n\n**Getting Around:**\n4. 🛺 Tuk-tuk: **මීටරය දාන්න** = Use the meter!\n5. 🗺️ Where? = **කොහේද?** (kohēda?)\n\n**Eating:**\n6. 🍛 **බත් සහ කරි** = Rice & curry\n7. 🌶️ **මිරිස් අඩුවෙන්** = Less spicy please\n8. 💧 **බෝතල් වතුර** = Bottled water\n\n**Essentials:**\n9. ✅ **ස්තූතියි** = Thank you\n10. ❌ **නැහැ** = No\n11. 🆘 **උදව් කරන්න** = Help me\n12. 😅 **මට තේරෙන්නේ නැහැ** = I don\'t understand\n\n💡 Smile! Sri Lankans are the friendly people!',
   phone: '📱 **Phone & Internet:**\n\n**Getting a SIM card:**\n• Dialog, Mobitel, or Airtel at airport\n• Need: Passport + ~LKR 500-1000\n• Get: 5-10GB data + calls\n• Say: **මට සිම් කාඩ් එකක් ඕනේ** = I need a SIM card\n\n**WiFi:**\n• Most hotels/cafés have free WiFi\n• Ask: **WiFi මුරපදය මොකද?** = WiFi password?\n\n**Useful apps:**\n• PickMe — tuk-tuk/taxi booking\n• Google Translate — camera translation\n• Maps.me — offline maps\n• Uber — available in Colombo',
 };
 
@@ -44,12 +44,73 @@ const quickReplies = [
   'Cultural tips',
 ];
 
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+};
+
+// Safe markdown parser that outputs React elements to prevent XSS
+function parseMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split('\n');
+  return lines.map((line, lineIdx) => {
+    if (!line.trim()) {
+      return <p key={lineIdx} className="h-4" aria-hidden="true">&nbsp;</p>;
+    }
+
+    const elements: React.ReactNode[] = [];
+    let remaining = line;
+    let keyCounter = 0;
+
+    while (remaining.length > 0) {
+      const boldIdx = remaining.indexOf('**');
+      const italicIdx = remaining.indexOf('*');
+
+      if (boldIdx === -1 && italicIdx === -1) {
+        elements.push(remaining);
+        break;
+      }
+
+      const isBold = boldIdx !== -1 && (italicIdx === -1 || boldIdx <= italicIdx);
+      const token = isBold ? '**' : '*';
+      const tokenIdx = isBold ? boldIdx : italicIdx;
+
+      if (tokenIdx > 0) {
+        elements.push(remaining.substring(0, tokenIdx));
+      }
+
+      const nextRemaining = remaining.substring(tokenIdx + token.length);
+      const closeIdx = nextRemaining.indexOf(token);
+
+      if (closeIdx === -1) {
+        elements.push(token);
+        remaining = nextRemaining;
+      } else {
+        const innerText = nextRemaining.substring(0, closeIdx);
+        if (isBold) {
+          elements.push(<strong key={keyCounter++} className="font-bold">{innerText}</strong>);
+        } else {
+          elements.push(<em key={keyCounter++} className="italic">{innerText}</em>);
+        }
+        remaining = nextRemaining.substring(closeIdx + token.length);
+      }
+    }
+
+    return (
+      <p key={lineIdx} className={lineIdx > 0 ? 'mt-1' : ''}>
+        {elements}
+      </p>
+    );
+  });
+}
+
 function findAnswer(input: string): string {
   const q = input.toLowerCase().trim();
 
   // === PHOTO/IMAGE SCAN RESPONSE ===
   if (q === '__image_scanned__') {
-    return '📸 **Image Text Detected!**\n\nI extracted the text from your photo. Here\'s what I can help with:\n\n• If it\'s a **sign or menu** — I\'ll try to translate the Sinhala text\n• If it\'s a **price tag** — I\'ll help you understand the amount\n• If it\'s a **bus/train schedule** — I\'ll decode it for you\n\nThe image scanning uses your device\'s camera and OCR. For best results:\n✅ Clear, well-lit photos\n✅ Hold steady, avoid blur\n✅ Crop to the text you want translated\n\n💡 Try typing the Sinhala text you see, or ask me to translate specific words!';
+    return '📸 **Photo Received!**\n\nSince this application runs entirely client-side, I cannot automatically extract text (OCR) from your image.\n\n🔍 **How to get a translation:**\n1. Type the Sinhala letters you see in the photo\n2. Or describe what the sign/menu item says\n3. I will translate it for you!\n\n**Common signs in Sri Lanka:**\n• **ඇතුල් වීම** = Entrance\n• **පිටවීම** = Exit\n• **වැසිකිළිය** = Toilet/Restroom\n• **ආපනශාලාව** = Restaurant\n• **ඖෂධ ශාලාව** = Pharmacy\n• **බස් නැවතුම** = Bus Stop\n• **රෝහල** = Hospital\n• **පොලීසිය** = Police\n• **පිවිසීම තහනම්** = No Entry\n\n💡 Type the Sinhala text you see, and I\'ll explain what it means!';
   }
 
   // === SURVIVAL GUIDES (foreigners) ===
@@ -143,55 +204,167 @@ function findAnswer(input: string): string {
 }
 
 export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 0, role: 'bot', text: '🙏 **ආයුබෝවන්! Welcome to Sri Lanka!**\n\nI\'m your survival assistant for communicating with Sinhalese people.\n\n🆕 **New in v6.1.3:**\n• 📸 Scan photos of signs/menus\n• 🛺 Tuk-tuk & scam survival guides\n• 🛕 Temple etiquette\n• 💰 Money & currency tips\n• 🏥 Medical emergency phrases\n\nAsk me anything or tap a suggestion below!', timestamp: Date.now() }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  
+  const typingTimeoutRef = useRef<number | null>(null);
+  const focusTimeoutRef = useRef<number | null>(null);
 
+  // Initialize chatbot messages safely on mount
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+    setMessages([
+      {
+        id: generateUUID(),
+        role: 'bot',
+        text: '🙏 **ආයුබෝවන්! Welcome to Sri Lanka!**\n\nI\'m your survival assistant for communicating with Sinhalese people.\n\n🆕 **New in v6.1.3:**\n• 📸 Scan photos of signs/menus\n• 🛺 Tuk-tuk & scam survival guides\n• 🛕 Temple etiquette\n• 💰 Money & currency tips\n• 🏥 Medical emergency phrases\n\nAsk me anything or tap a suggestion below!',
+        timestamp: Date.now()
+      }
+    ]);
+  }, []);
 
+  // Clean up timeouts on unmount
   useEffect(() => {
-    if (isOpen) setTimeout(() => inputRef.current?.focus(), 300);
+    return () => {
+      if (typingTimeoutRef.current !== null) window.clearTimeout(typingTimeoutRef.current);
+      if (focusTimeoutRef.current !== null) window.clearTimeout(focusTimeoutRef.current);
+    };
+  }, []);
+
+  // Scroll messages viewport
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    }
+  }, [messages, isTyping]);
+
+  // Handle focus when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      focusTimeoutRef.current = window.setTimeout(() => inputRef.current?.focus(), 300);
+    }
   }, [isOpen]);
+
+  // Focus trap + Escape closing for accessibility (a11y)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll(
+          'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        const elements = Array.from(focusableElements) as HTMLElement[];
+        if (elements.length === 0) return;
+
+        const first = elements[0];
+        const last = elements[elements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            last.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === last) {
+            first.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const sendMessage = useCallback((text: string) => {
     if (!text.trim()) return;
-    setMessages(prev => [...prev, { id: Date.now(), role: 'user', text: text.trim(), timestamp: Date.now() }]);
+    
+    const userMsgId = generateUUID();
+    const botMsgId = generateUUID();
+
+    setMessages(prev => {
+      const next = [...prev, { id: userMsgId, role: 'user' as const, text: text.trim(), timestamp: Date.now() }];
+      return next.slice(-40); // cap context size to last 40 messages
+    });
+    
     setInput('');
     setIsTyping(true);
-    setTimeout(() => {
-      setMessages(prev => [...prev, { id: Date.now() + 1, role: 'bot', text: findAnswer(text), timestamp: Date.now() }]);
+
+    if (typingTimeoutRef.current !== null) {
+      window.clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = window.setTimeout(() => {
+      setMessages(prev => {
+        const next = [...prev, { id: botMsgId, role: 'bot' as const, text: findAnswer(text), timestamp: Date.now() }];
+        return next.slice(-40);
+      });
       setIsTyping(false);
-    }, 300 + Math.random() * 500);
+    }, 400 + Math.random() * 400);
   }, []);
 
-  // Photo scan handler — uses canvas to extract & display image, then responds
+  // Photo scan handler — client side representation only (no API backend)
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Basic file validation
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      alert('Image size exceeds 5MB limit.');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
-      // Add user message with image
-      setMessages(prev => [...prev, {
-        id: Date.now(), role: 'user', text: '📸 I scanned this photo:',
-        image: dataUrl, timestamp: Date.now()
-      }]);
+      const userMsgId = generateUUID();
+      const botMsgId = generateUUID();
+
+      setMessages(prev => [
+        ...prev,
+        {
+          id: userMsgId,
+          role: 'user' as const,
+          text: '📸 I scanned this photo:',
+          image: dataUrl,
+          timestamp: Date.now()
+        }
+      ].slice(-40));
+      
       setIsTyping(true);
-      // Simulate OCR processing
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          id: Date.now() + 1, role: 'bot', timestamp: Date.now(),
-          text: '📸 **Photo received!** I can see your image.\n\n🔍 **To get a translation:**\n1. Type the Sinhala text you see in the photo\n2. Or describe what the sign/menu says\n3. I\'ll translate it instantly!\n\n**Common signs you\'ll see:**\n• **ඇතුල් වීම** = Entrance\n• **පිටවීම** = Exit\n• **වැසිකිළිය** = Toilet/Restroom\n• **ආපනශාලාව** = Restaurant\n• **ඖෂධ ශාලාව** = Pharmacy\n• **බස් නැවතුම** = Bus Stop\n• **රෝහල** = Hospital\n• **පොලීසිය** = Police\n• **අනතුරු** = Danger\n• **පිවිසීම තහනම්** = No Entry\n\n💡 Type any Sinhala text and I\'ll translate it!'
-        }]);
+
+      if (typingTimeoutRef.current !== null) {
+        window.clearTimeout(typingTimeoutRef.current);
+      }
+
+      typingTimeoutRef.current = window.setTimeout(() => {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: botMsgId,
+            role: 'bot' as const,
+            timestamp: Date.now(),
+            text: '📸 **Photo received!** Since this app runs entirely offline/client-side, I cannot automatically extract text (OCR) from your image.\n\n🔍 **How to get a translation:**\n1. Type the Sinhala letters you see in the photo\n2. Or describe the sign/menu item\n3. I will translate it for you!\n\n**Common signs in Sri Lanka:**\n• **ඇතුල් වීම** = Entrance\n• **පිටවීම** = Exit\n• **වැසිකිළිය** = Toilet/Restroom\n• **ආපනශාලාව** = Restaurant\n• **ඖෂධ ශාලාව** = Pharmacy\n• **බස් නැවතුම** = Bus Stop\n• **රෝහල** = Hospital\n• **පොලීසිය** = Police\n• **පිවිසීම තහනම්** = No Entry\n\n💡 Type the Sinhala text you see, and I\'ll explain what it means!'
+          }
+        ].slice(-40));
         setIsTyping(false);
-      }, 800 + Math.random() * 700);
+      }, 1000 + Math.random() * 500);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -201,42 +374,64 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
 
   return (
     <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative w-full sm:max-w-lg h-full sm:h-[88vh] sm:max-h-[760px] sm:rounded-3xl flex flex-col overflow-hidden shadow-2xl ${darkMode ? 'bg-slate-950 border border-slate-800' : 'bg-white border border-slate-200'}`}>
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose} aria-hidden="true" />
+      
+      {/* Modal Container */}
+      <div 
+        ref={modalRef} 
+        role="dialog" 
+        aria-modal="true" 
+        aria-label="Survival Chatbot Helper"
+        className={`relative w-full sm:max-w-lg h-[100dvh] sm:h-[88vh] sm:max-h-[760px] sm:rounded-3xl flex flex-col overflow-hidden shadow-2xl animate-scale-in ${
+          darkMode ? 'bg-slate-950 border border-slate-800' : 'bg-white border border-slate-200'
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-saffron-500 to-saffron-600 text-white flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl backdrop-blur-sm">🤖</div>
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl backdrop-blur-sm" aria-hidden="true">🤖</div>
             <div>
               <h3 className="font-bold text-sm">Sri Lanka Survival Helper</h3>
               <p className="text-[10px] text-white/70 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-leaf-400 rounded-full" />
+                <span className="w-1.5 h-1.5 bg-leaf-400 rounded-full animate-pulse" />
                 For foreigners • Translation • Safety • Culture
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/20 transition-colors" aria-label="Close Chatbot">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        {/* Messages */}
+        {/* Messages list */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
           {messages.map(msg => (
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.role === 'user' ? 'bg-gradient-to-r from-saffron-500 to-saffron-600 text-white rounded-br-md' : darkMode ? 'bg-slate-900 border border-slate-800 text-slate-300 rounded-bl-md' : 'bg-slate-100 text-slate-800 rounded-bl-md'}`}>
+              <div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                msg.role === 'user' 
+                  ? 'bg-gradient-to-r from-saffron-500 to-saffron-600 text-white rounded-br-md' 
+                  : darkMode ? 'bg-slate-900 border border-slate-800 text-slate-300 rounded-bl-md' : 'bg-slate-100 text-slate-800 rounded-bl-md'
+              }`}>
                 {msg.image && (
-                  <img src={msg.image} alt="Scanned" className="w-full max-h-48 object-cover rounded-xl mb-2 border border-white/20" />
+                  <img src={msg.image} alt="Scanned view" className="w-full max-h-48 object-cover rounded-xl mb-2 border border-white/20" />
                 )}
-                {msg.text.split('\n').map((line, i) => {
-                  const f = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>');
-                  return <p key={i} className={i > 0 ? 'mt-1' : ''} dangerouslySetInnerHTML={{ __html: f || '&nbsp;' }} />;
-                })}
+                <div className="space-y-1">
+                  {parseMarkdown(msg.text)}
+                </div>
               </div>
             </div>
           ))}
           {isTyping && (
             <div className="flex justify-start">
-              <div className={`rounded-2xl px-4 py-3 rounded-bl-md ${darkMode ? 'bg-slate-900 border border-slate-800' : 'bg-slate-100'}`}>
-                <div className="flex gap-1.5"><span className="w-2 h-2 rounded-full bg-saffron-400 animate-bounce" /><span className="w-2 h-2 rounded-full bg-saffron-400 animate-bounce" style={{ animationDelay: '150ms' }} /><span className="w-2 h-2 rounded-full bg-saffron-400 animate-bounce" style={{ animationDelay: '300ms' }} /></div>
+              <div className={`rounded-2xl px-4 py-3 rounded-bl-md ${darkMode ? 'bg-slate-900 border border-slate-800' : 'bg-slate-100'}`} aria-label="Bot is typing">
+                <div className="flex gap-1.5" aria-hidden="true">
+                  <span className="w-2 h-2 rounded-full bg-saffron-400 animate-bounce" />
+                  <span className="w-2 h-2 rounded-full bg-saffron-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-saffron-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
               </div>
             </div>
           )}
@@ -244,35 +439,62 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
 
         {/* Quick replies */}
         {messages.length <= 2 && (
-          <div className="px-3 pb-2 flex gap-1.5 overflow-x-auto flex-shrink-0">
+          <div className="px-3 pb-2 flex gap-1.5 overflow-x-auto flex-shrink-0 scrollbar-none">
             {quickReplies.slice(0, 6).map((r, i) => (
               <button key={i} onClick={() => sendMessage(r)}
-                className={`flex-shrink-0 px-2.5 py-1.5 rounded-full text-[10px] font-medium hover:scale-105 transition-all ${darkMode ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>{r}</button>
+                className={`flex-shrink-0 px-2.5 py-1.5 rounded-full text-[10px] font-medium hover:scale-105 transition-all ${
+                  darkMode ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-600' : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                }`}
+              >
+                {r}
+              </button>
             ))}
           </div>
         )}
 
-        {/* Input with photo scan */}
+        {/* Input area */}
         <div className={`p-3 border-t flex-shrink-0 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
           <form onSubmit={e => { e.preventDefault(); sendMessage(input); }} className="flex gap-2">
-            {/* Camera / Photo button */}
-            <button type="button" onClick={() => fileRef.current?.click()}
-              className={`flex-shrink-0 p-3 rounded-xl transition-all hover:scale-105 ${darkMode ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:border-saffron-700 hover:text-saffron-400' : 'bg-slate-100 text-slate-500 border border-slate-200 hover:border-saffron-300 hover:text-saffron-500'}`}
-              title="Scan a photo of a sign or menu">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            {/* Camera scanner */}
+            <button 
+              type="button" 
+              onClick={() => fileRef.current?.click()}
+              className={`flex-shrink-0 p-3 rounded-xl transition-all hover:scale-105 ${
+                darkMode ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:border-saffron-700 hover:text-saffron-400' : 'bg-slate-100 text-slate-500 border border-slate-200 hover:border-saffron-300 hover:text-saffron-500'
+              }`}
+              aria-label="Scan sign or menu photo"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
             </button>
             <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" />
 
-            <input ref={inputRef} type="text" value={input} onChange={e => setInput(e.target.value)}
+            <input 
+              ref={inputRef} 
+              type="text" 
+              value={input} 
+              onChange={e => setInput(e.target.value)}
               placeholder="Describe your situation..."
-              className={`flex-1 px-4 py-3 rounded-xl text-sm outline-none transition-all ${darkMode ? 'bg-slate-900 border border-slate-800 text-white placeholder:text-slate-600 focus:border-saffron-600' : 'bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-saffron-400'}`} />
-            <button type="submit" disabled={!input.trim()}
-              className="flex-shrink-0 px-4 py-3 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white rounded-xl font-bold text-sm hover:scale-105 active:scale-95 transition-all disabled:opacity-40 shadow-lg shadow-saffron-500/20">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+              className={`flex-1 px-4 py-3 rounded-xl text-sm outline-none transition-all ${
+                darkMode ? 'bg-slate-900 border border-slate-800 text-white placeholder:text-slate-600 focus:border-saffron-600' : 'bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-saffron-400'
+              }`} 
+            />
+            
+            <button 
+              type="submit" 
+              disabled={!input.trim()}
+              className="flex-shrink-0 px-4 py-3 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white rounded-xl font-bold text-sm hover:scale-105 active:scale-95 transition-all disabled:opacity-40 shadow-lg shadow-saffron-500/20"
+              aria-label="Send Message"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
             </button>
           </form>
           <p className={`text-[9px] mt-1.5 text-center ${darkMode ? 'text-slate-600' : 'text-slate-400'}`}>
-            📸 Tap camera to scan signs • Type any situation for help
+            📸 Tap camera to upload photo • Type questions or situations
           </p>
         </div>
       </div>

@@ -4,8 +4,19 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
       const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch {
+      if (!item) return initialValue;
+      
+      const parsed = JSON.parse(item);
+      
+      // Basic runtime validation and schema migration:
+      // If initialValue is an object and parsed is an object, merge them to preserve defaults for new fields.
+      if (parsed && typeof parsed === 'object' && initialValue && typeof initialValue === 'object') {
+        return { ...initialValue, ...parsed } as T;
+      }
+      
+      return (parsed !== null && parsed !== undefined) ? parsed : initialValue;
+    } catch (error) {
+      console.warn(`Error reading localStorage key "${key}":`, error);
       return initialValue;
     }
   });
@@ -13,8 +24,8 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
   useEffect(() => {
     try {
       window.localStorage.setItem(key, JSON.stringify(storedValue));
-    } catch {
-      // silently fail
+    } catch (error) {
+      console.warn(`Error writing localStorage key "${key}":`, error);
     }
   }, [key, storedValue]);
 
@@ -27,3 +38,4 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
 
   return [storedValue, setValue];
 }
+

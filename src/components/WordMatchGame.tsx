@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { lessons } from '../data/lessons';
+import { useSpeech } from '../hooks/useSpeech';
 
 interface WordMatchGameProps {
   darkMode: boolean;
@@ -16,8 +17,18 @@ interface Card {
   isMatched: boolean;
 }
 
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatchGameProps) {
   const [cards, setCards] = useState<Card[]>([]);
+  const { speak, isSupported } = useSpeech();
   const [selected, setSelected] = useState<number[]>([]);
   const [matches, setMatches] = useState(0);
   const [moves, setMoves] = useState(0);
@@ -25,21 +36,28 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
   const [isRunning, setIsRunning] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [bestTime, setBestTime] = useState<number | null>(null);
+  
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const timerValueRef = useRef(0);
+
+  // Sync ref with timer state to prevent stale closures
+  useEffect(() => {
+    timerValueRef.current = timer;
+  }, [timer]);
 
   const initGame = useCallback(() => {
     // Pick 6 random words from all lessons
     const allWords = lessons.flatMap(l => l.words);
-    const shuffled = [...allWords].sort(() => Math.random() - 0.5).slice(0, 6);
+    const shuffledWords = shuffleArray(allWords).slice(0, 6);
 
     const cardPairs: Card[] = [];
-    shuffled.forEach((word, i) => {
+    shuffledWords.forEach((word, i) => {
       cardPairs.push({ id: i * 2, text: word.sinhala, pairId: i, type: 'sinhala', isFlipped: false, isMatched: false });
       cardPairs.push({ id: i * 2 + 1, text: word.english, pairId: i, type: 'english', isFlipped: false, isMatched: false });
     });
 
-    // Shuffle cards
-    setCards(cardPairs.sort(() => Math.random() - 0.5));
+    // Shuffle cards using Fisher-Yates
+    setCards(shuffleArray(cardPairs));
     setSelected([]);
     setMatches(0);
     setMoves(0);
@@ -64,6 +82,11 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
 
     const card = cards.find(c => c.id === cardId);
     if (!card || card.isFlipped || card.isMatched || selected.length >= 2) return;
+
+    // Speak Sinhala word if clicked
+    if (card.type === 'sinhala' && isSupported) {
+      speak(card.text);
+    }
 
     const newCards = cards.map(c => c.id === cardId ? { ...c, isFlipped: true } : c);
     setCards(newCards);
@@ -91,11 +114,13 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
             setIsRunning(false);
             setIsComplete(true);
             onComplete();
+            
+            const currentTimer = timerValueRef.current;
             const stored = localStorage.getItem('sinhala-match-best');
             const currentBest = stored ? parseInt(stored) : null;
-            if (!currentBest || timer < currentBest) {
-              localStorage.setItem('sinhala-match-best', timer.toString());
-              setBestTime(timer);
+            if (!currentBest || currentTimer < currentBest) {
+              localStorage.setItem('sinhala-match-best', currentTimer.toString());
+              setBestTime(currentTimer);
             }
           }
         }, 500);
@@ -124,7 +149,9 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
       <div className={`min-h-screen pt-20 flex items-center justify-center px-4 ${darkMode ? 'bg-slate-950' : 'bg-gradient-to-b from-slate-50 to-white'}`}>
         <div className="max-w-md w-full animate-scale-in">
           <div className={`rounded-3xl p-8 text-center ${darkMode ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-200 shadow-xl'}`}>
-            <div className="text-5xl mb-4">{'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}</div>
+            <div className="text-5xl mb-4" role="img" aria-label={`Score: ${stars} out of 3 stars`}>
+              {'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}
+            </div>
             <h2 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
               {stars === 3 ? 'Perfect!' : stars === 2 ? 'Great!' : 'Complete!'}
             </h2>
@@ -157,7 +184,7 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
               <button onClick={() => initGame()} className="flex-1 px-5 py-3 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-semibold rounded-xl hover:scale-105 transition-transform">
                 Play Again
               </button>
-              <button onClick={onBack} className={`flex-1 px-5 py-3 rounded-xl font-semibold ${darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+              <button onClick={onBack} className={`flex-1 px-5 py-3 rounded-xl font-semibold ${darkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
                 Back
               </button>
             </div>
@@ -173,7 +200,7 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <button onClick={onBack} className={`flex items-center gap-2 text-sm mb-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'} hover:text-saffron-500 transition-colors`}>
+            <button onClick={onBack} className={`flex items-center gap-2 text-sm mb-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'} hover:text-saffron-500 transition-colors`} aria-label="Go Back">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
@@ -203,30 +230,38 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
 
         {/* Card grid */}
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-          {cards.map(card => (
-            <button
-              key={card.id}
-              onClick={() => handleCardClick(card.id)}
-              disabled={card.isFlipped || card.isMatched}
-              className={`aspect-[4/3] rounded-2xl p-3 flex items-center justify-center text-center transition-all duration-300 ${
-                card.isMatched
-                  ? 'bg-gradient-to-br from-leaf-400 to-leaf-500 text-white scale-95 opacity-70'
-                  : card.isFlipped
-                    ? 'bg-gradient-to-br from-saffron-400 to-saffron-600 text-white shadow-lg shadow-saffron-500/20 scale-105'
-                    : darkMode
-                      ? 'bg-slate-800 border-2 border-slate-700 hover:border-saffron-600 hover:bg-slate-700 text-slate-400'
-                      : 'bg-white border-2 border-slate-200 hover:border-saffron-300 hover:shadow-md text-slate-800'
-              } ${!card.isFlipped && !card.isMatched ? 'cursor-pointer active:scale-95' : ''}`}
-            >
-              {card.isFlipped || card.isMatched ? (
-                <span className={`font-bold ${card.type === 'sinhala' ? 'sinhala-text text-lg' : 'text-sm'}`}>
-                  {card.text}
-                </span>
-              ) : (
-                <span className="text-2xl">❓</span>
-              )}
-            </button>
-          ))}
+          {cards.map((card, index) => {
+            const cardState = card.isMatched 
+              ? 'Matched' 
+              : card.isFlipped 
+                ? `Flipped: ${card.text}` 
+                : 'Face down';
+            return (
+              <button
+                key={card.id}
+                onClick={() => handleCardClick(card.id)}
+                disabled={card.isFlipped || card.isMatched}
+                aria-label={`Card ${index + 1}: ${cardState}`}
+                className={`aspect-[4/3] rounded-2xl p-3 flex items-center justify-center text-center transition-all duration-300 ${
+                  card.isMatched
+                    ? 'bg-gradient-to-br from-leaf-400 to-leaf-500 text-white scale-95 opacity-70'
+                    : card.isFlipped
+                      ? 'bg-gradient-to-br from-saffron-400 to-saffron-600 text-white shadow-lg shadow-saffron-500/20 scale-105'
+                      : darkMode
+                        ? 'bg-slate-800 border-2 border-slate-700 hover:border-saffron-600 hover:bg-slate-700 text-slate-400'
+                        : 'bg-white border-2 border-slate-200 hover:border-saffron-300 hover:shadow-md text-slate-800'
+                } ${!card.isFlipped && !card.isMatched ? 'cursor-pointer active:scale-95' : ''}`}
+              >
+                {card.isFlipped || card.isMatched ? (
+                  <span className={`font-bold ${card.type === 'sinhala' ? 'sinhala-text text-lg' : 'text-sm'}`} lang={card.type === 'sinhala' ? 'si' : undefined}>
+                    {card.text}
+                  </span>
+                ) : (
+                  <span className="text-2xl" aria-hidden="true">❓</span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <div className="mt-6 text-center">
@@ -238,3 +273,4 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
     </div>
   );
 }
+

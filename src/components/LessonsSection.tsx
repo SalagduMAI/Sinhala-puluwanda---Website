@@ -20,7 +20,7 @@ export default function LessonsSection({ onSelectLesson, progress, darkMode }: L
           <h2 className={`text-3xl sm:text-4xl md:text-5xl font-black mb-3 font-space tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
             <span className="sinhala-text">පාඩම්</span> — Lessons
           </h2>
-          <p className={`text-base sm:text-lg max-w-xl mx-auto ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+          <p className={`text-base sm:text-lg max-w-xl mx-auto ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
             12 real-world scenarios with 144 practical phrases. From survival basics to
             tech vocabulary — learn exactly what you need for Sri Lanka.
           </p>
@@ -30,7 +30,7 @@ export default function LessonsSection({ onSelectLesson, progress, darkMode }: L
           {lessons.map(lesson => {
             const learned = progress[lesson.id]?.length || 0;
             const total = lesson.words.length;
-            const progressPercent = Math.round((learned / total) * 100);
+            const progressPercent = total > 0 ? Math.round((learned / total) * 100) : 0;
             return (
               <LessonCard
                 key={lesson.id}

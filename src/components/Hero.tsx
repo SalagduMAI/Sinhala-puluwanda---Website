@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { culturalFacts } from '../data/lessons';
+import { culturalFacts, lessons } from '../data/lessons';
+import { APP_VERSION } from '../constants';
 
 interface HeroProps {
   onStart: () => void;
-  darkMode: boolean;
   totalWords: number;
   level: number;
   streak: number;
@@ -30,6 +30,9 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
   const [captionVisible, setCaptionVisible] = useState(true);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const fullText = 'Can you speak Sinhala?';
+
+  const totalScenarios = lessons.length;
+  const totalPhrases = lessons.reduce((sum, lesson) => sum + lesson.words.length, 0);
 
   const particles = useMemo(() =>
     Array.from({ length: 30 }, (_, i) => ({
@@ -66,11 +69,26 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-play all videos (muted) so they're ready for crossfade
+  // Auto-play active video and pause inactive ones
+  useEffect(() => {
+    videoRefs.current.forEach((video, idx) => {
+      if (video) {
+        if (idx === activeVideo) {
+          video.play().catch(() => {});
+        } else {
+          video.pause();
+        }
+      }
+    });
+  }, [activeVideo]);
+
+  // Handle video loading ready
   const handleVideoReady = useCallback((index: number) => {
     setVideosReady(prev => { const next = [...prev]; next[index] = true; return next; });
-    videoRefs.current[index]?.play().catch(() => {});
-  }, []);
+    if (index === activeVideo) {
+      videoRefs.current[index]?.play().catch(() => {});
+    }
+  }, [activeVideo]);
 
   const anyVideoReady = videosReady.some(Boolean);
 
@@ -92,7 +110,7 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[1.5s] ease-in-out ${
               activeVideo === i && anyVideoReady ? 'opacity-50' : 'opacity-0'
             }`}
-            autoPlay muted loop playsInline
+            muted loop playsInline
             poster="/images/hero-bg.jpg"
             onCanPlayThrough={() => handleVideoReady(i)}
             onLoadedData={() => handleVideoReady(i)}
@@ -165,7 +183,7 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
         <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <div className="inline-flex items-center gap-2.5 glass rounded-full px-4 sm:px-5 py-2 mb-6 sm:mb-8">
             <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-leaf-400 opacity-75" /><span className="relative inline-flex rounded-full h-2 w-2 bg-leaf-400" /></span>
-            <span className="text-white/80 text-[10px] sm:text-xs font-medium tracking-wide">v6.1.3 — Built for Travelers • AI Survival Guide • Photo Scanner • 144 Phrases</span>
+            <span className="text-white/80 text-[10px] sm:text-xs font-medium tracking-wide">v{APP_VERSION} — Built for Travelers • AI Survival Guide • Photo Scanner • {totalPhrases} Phrases</span>
           </div>
         </div>
 
@@ -223,8 +241,8 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
         {/* Stats */}
         <div className="animate-slide-up grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 max-w-2xl mx-auto" style={{ animationDelay: '0.9s' }}>
           {[
-            { value: '12', label: 'Scenarios', icon: '📚' },
-            { value: '144', label: 'Phrases', icon: '🗣️' },
+            { value: totalScenarios.toString(), label: 'Scenarios', icon: '📚' },
+            { value: totalPhrases.toString(), label: 'Phrases', icon: '🗣️' },
             { value: `Lv.${level}`, label: 'Your Level', icon: '⭐' },
             { value: streak > 0 ? `${streak}🔥` : '—', label: 'Streak', icon: '📅' },
           ].map((s, i) => (
