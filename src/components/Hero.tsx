@@ -189,7 +189,7 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
 
         {/* Title */}
         <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <h1 className="text-[2.6rem] leading-[1.5] sm:text-6xl md:text-7xl lg:text-8xl xl:text-[7.0rem] font-black text-white mb-3 sm:mb-4 sinhala-text tracking-tight">
+          <h1 className="text-[2.6rem] leading-[1.2] sm:text-6xl md:text-7xl lg:text-8xl xl:text-[7.0rem] font-black text-white mb-3 sm:mb-4 sinhala-text tracking-tight">
             සිංහල පුළුවන්ද<span className="text-saffron-400">?</span>
           </h1>
         </div>
