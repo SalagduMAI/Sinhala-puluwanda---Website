@@ -355,7 +355,8 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                   onTouchStart={startDrawing}
                   onTouchMove={draw}
                   onTouchEnd={stopDrawing}
-                  className="absolute inset-0 w-full h-full cursor-crosshair z-10"
+                  style={{ touchAction: 'none' }}
+                  className="absolute inset-0 w-full h-full cursor-crosshair z-10 touch-none"
                 />
               </div>
 

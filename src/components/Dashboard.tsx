@@ -229,12 +229,12 @@ export default function Dashboard({
         </div>
 
         {/* Tab Controls */}
-        <div className="flex flex-wrap border-b border-slate-700/20 gap-1">
+        <div className="flex overflow-x-auto border-b border-slate-700/20 gap-1 pb-1 scrollbar-none whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
           {(['stats', 'starred', 'leaderboard', 'cloud', 'settings'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 font-semibold text-xs sm:text-sm border-b-2 -mb-[2px] transition-all capitalize ${
+              className={`px-4 py-3 font-semibold text-xs sm:text-sm border-b-2 -mb-[2px] transition-all capitalize shrink-0 ${
                 activeTab === tab
                   ? 'border-amber-500 text-amber-500 font-bold'
                   : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'

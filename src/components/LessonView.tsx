@@ -38,7 +38,7 @@ function WordCard({
             setFlipped(!flipped);
           }
         }}
-        className={`relative cursor-pointer rounded-2xl p-6 min-h-[200px] flex flex-col justify-between transition-all duration-500 ${
+        className={`relative cursor-pointer rounded-2xl p-4 sm:p-6 min-h-[180px] sm:min-h-[200px] flex flex-col justify-between transition-all duration-500 ${
           flipped
             ? darkMode
               ? 'bg-gradient-to-br from-saffron-900/30 to-orange-900/20 border-2 border-saffron-700/50 shadow-lg shadow-saffron-900/20'

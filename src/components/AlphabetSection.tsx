@@ -83,7 +83,7 @@ export default function AlphabetSection({ darkMode, soundEnabled }: AlphabetSect
         </div>
 
         {/* Letter grid */}
-        <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2 sm:gap-2.5">
+        <div className="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2 sm:gap-2.5">
           {filtered.map((item, i) => (
             <button key={i} onClick={() => handleLetterClick(item)}
               className={`group relative aspect-square rounded-xl sm:rounded-2xl flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 ${

@@ -47,20 +47,20 @@ export const GrammarSection: React.FC<GrammarSectionProps> = ({ onAddXP }) => {
       </div>
 
       {/* Lesson Navigation Tabs */}
-      <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+      <div className="flex sm:flex-wrap items-center overflow-x-auto justify-start sm:justify-center gap-2.5 sm:gap-3 mb-8 pb-2 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
         {GRAMMAR_LESSONS.map((lesson) => {
           const isActive = lesson.id === activeLessonId;
           return (
             <button
               key={lesson.id}
               onClick={() => setActiveLessonId(lesson.id)}
-              className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl font-medium transition-all duration-200 border text-sm ${
+              className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl font-medium transition-all duration-200 border text-xs sm:text-sm shrink-0 whitespace-nowrap ${
                 isActive
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-transparent shadow-lg shadow-emerald-500/20 scale-[1.02]'
                   : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-700/50'
               }`}
             >
-              <span className="text-lg">{lesson.icon}</span>
+              <span className="text-base sm:text-lg">{lesson.icon}</span>
               <span>{lesson.title}</span>
             </button>
           );
