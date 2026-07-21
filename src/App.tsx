@@ -12,6 +12,7 @@ import Footer from './components/Footer';
 import Chatbot from './components/Chatbot';
 import XPToast from './components/XPToast';
 import { Lesson, lessons } from './data/lessons';
+import { GrammarSection } from './components/GrammarSection';
 
 // Lazy load heavy views
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -22,7 +23,7 @@ const QuizView = lazy(() => import('./components/QuizView'));
 const WritingPractice = lazy(() => import('./components/WritingPractice'));
 const FlashcardReview = lazy(() => import('./components/FlashcardReview'));
 
-type View = 'home' | 'lesson' | 'quiz' | 'dashboard' | 'match-game' | 'conversation' | 'writing-practice' | 'flashcards';
+type View = 'home' | 'lesson' | 'quiz' | 'dashboard' | 'match-game' | 'conversation' | 'writing-practice' | 'flashcards' | 'grammar';
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-slate-900/5 dark:bg-slate-950/20">
@@ -70,6 +71,9 @@ export default function App() {
         setSelectedLesson(null);
       } else if (hash === '#/flashcards') {
         setView('flashcards');
+        setSelectedLesson(null);
+      } else if (hash === '#/grammar') {
+        setView('grammar');
         setSelectedLesson(null);
       } else if (hash.startsWith('#/lesson/')) {
         const id = parseInt(hash.replace('#/lesson/', ''), 10);
@@ -183,6 +187,9 @@ export default function App() {
     if (section === 'home') {
       window.location.hash = '#/';
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (section === 'grammar') {
+      window.location.hash = '#/grammar';
+      window.scrollTo(0, 0);
     } else if (['alphabet', 'lessons', 'practice', 'about', 'contact'].includes(section)) {
       if (view !== 'home') {
         setScrollToSection(section);
@@ -331,6 +338,13 @@ export default function App() {
               onAwardXP={addXP}
             />
           </Suspense>
+        );
+
+      case 'grammar':
+        return (
+          <div className="pt-20 pb-12">
+            <GrammarSection onAddXP={addXP} />
+          </div>
         );
 
       case 'home':

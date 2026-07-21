@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { APP_VERSION } from '../constants';
+import { useTranslation } from '../i18n/useTranslation';
+import { LANGUAGES, Language } from '../i18n/translations';
 
 interface NavbarProps {
   level: number;
@@ -17,6 +19,7 @@ const NAV_LINKS = [
   { label: 'Home', id: 'home', icon: '🏠' },
   { label: 'Alphabet', id: 'alphabet', icon: '📖' },
   { label: 'Lessons', id: 'lessons', icon: '📚' },
+  { label: 'Grammar', id: 'grammar', icon: '✍️' },
   { label: 'Practice', id: 'practice', icon: '🎮' },
   { label: 'About', id: 'about', icon: '👤' },
   { label: 'Contact', id: 'contact', icon: '✉️' },
@@ -25,6 +28,7 @@ const NAV_LINKS = [
 export default function Navbar({ level, xp, xpProgress, streak, darkMode, onToggleDark, onNavigate, onOpenDashboard, currentView }: NavbarProps) {
   const [showMobile, setShowMobile] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { lang, setLanguage } = useTranslation();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 60);
@@ -139,6 +143,28 @@ export default function Navbar({ level, xp, xpProgress, streak, darkMode, onTogg
                 <span className={`text-xs font-bold ${isHero ? 'text-orange-300' : darkMode ? 'text-orange-400' : 'text-orange-600'}`}>{streak}</span>
               </div>
             )}
+
+            {/* Language Selector */}
+            <div className="relative">
+              <select
+                value={lang}
+                onChange={(e) => setLanguage(e.target.value as Language)}
+                aria-label="Select UI Language"
+                className={`text-xs font-semibold px-2 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                  isHero
+                    ? 'bg-slate-900/60 text-white border-white/20'
+                    : darkMode
+                    ? 'bg-slate-800 text-slate-200 border-slate-700'
+                    : 'bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code} className="text-slate-900 bg-white">
+                    {l.flag} {l.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* Dark mode */}
             <button onClick={onToggleDark} className={`p-2 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 ${textColor}`} aria-label="Toggle dark mode">

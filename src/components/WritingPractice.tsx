@@ -161,15 +161,88 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     setStrokes(prev => prev.slice(0, -1));
   };
 
+  // Calculate handwriting stroke accuracy against reference letter stencil
+  const [accuracyModal, setAccuracyModal] = useState<{ score: number; grade: string; message: string } | null>(null);
+
+  const evaluateHandwritingAccuracy = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || strokes.length === 0) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 1. Get drawn user canvas data
+    const userImageData = ctx.getImageData(0, 0, width, height);
+    const userPixels = userImageData.data;
+
+    // 2. Create offscreen canvas for reference letter template
+    const refCanvas = document.createElement('canvas');
+    refCanvas.width = width;
+    refCanvas.height = height;
+    const refCtx = refCanvas.getContext('2d');
+    if (!refCtx) return;
+
+    refCtx.font = `bold ${Math.floor(height * 0.65)}px sans-serif`;
+    refCtx.textAlign = 'center';
+    refCtx.textBaseline = 'middle';
+    refCtx.fillStyle = '#000000';
+    refCtx.fillText(letter.letter, width / 2, height / 2);
+
+    const refImageData = refCtx.getImageData(0, 0, width, height);
+    const refPixels = refImageData.data;
+
+    // 3. Compute overlap metrics
+    let refPixelCount = 0;
+    let matchCount = 0;
+    let userDrawnCount = 0;
+
+    for (let i = 3; i < userPixels.length; i += 4) {
+      const isRefDrawn = refPixels[i] > 30; // Alpha threshold
+      const isUserDrawn = userPixels[i] > 30;
+
+      if (isRefDrawn) refPixelCount++;
+      if (isUserDrawn) userDrawnCount++;
+      if (isRefDrawn && isUserDrawn) matchCount++;
+    }
+
+    if (refPixelCount === 0 || userDrawnCount === 0) {
+      setAccuracyModal({ score: 0, grade: 'Need Drawing', message: 'Please draw inside the box first.' });
+      return;
+    }
+
+    // Coverage & Precision ratio
+    const recall = matchCount / refPixelCount;
+    const precision = matchCount / userDrawnCount;
+    const f1Score = (2 * precision * recall) / (precision + recall || 1);
+    const accuracyPercent = Math.min(100, Math.max(15, Math.round(f1Score * 100 * 1.35)));
+
+    let grade = 'C';
+    let message = 'Keep practicing the stroke path!';
+    let bonusXP = 10;
+
+    if (accuracyPercent >= 85) {
+      grade = 'A+';
+      message = 'Outstanding handwriting! Exceptional stroke precision!';
+      bonusXP = 25;
+    } else if (accuracyPercent >= 70) {
+      grade = 'A';
+      message = 'Great letter shape! Very clear handwriting.';
+      bonusXP = 20;
+    } else if (accuracyPercent >= 55) {
+      grade = 'B';
+      message = 'Good attempt! Try staying closer to the stencil outline.';
+      bonusXP = 15;
+    }
+
+    setAccuracyModal({ score: accuracyPercent, grade, message });
+    onAwardXP(bonusXP);
+  };
+
   const triggerCelebrate = () => {
     if (!hasPracticed) return;
-    onAwardXP(10);
-    alert(`🎉 Excellent! You earned +10 XP for practicing "${letter.letter}" (${letter.romanized})!`);
-    clearCanvas();
-    // Auto advance
-    if (selectedIdx < alphabet.length - 1) {
-      handleLetterChange(selectedIdx + 1);
-    }
+    evaluateHandwritingAccuracy();
   };
 
   const handlePlaySound = () => {
@@ -390,6 +463,46 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
 
           </div>
         </div>
+
+        {/* Accuracy Score Results Modal */}
+        {accuracyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl space-y-4">
+              <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-500 font-extrabold text-2xl flex items-center justify-center mx-auto border border-amber-500/30">
+                {accuracyModal.grade}
+              </div>
+              <div>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white">
+                  {accuracyModal.score}% Accuracy
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                  {accuracyModal.message}
+                </p>
+              </div>
+
+              <div className="pt-2 flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    setAccuracyModal(null);
+                    clearCanvas();
+                    if (selectedIdx < alphabet.length - 1) {
+                      handleLetterChange(selectedIdx + 1);
+                    }
+                  }}
+                  className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-lg shadow-amber-500/20"
+                >
+                  Next Letter ➔
+                </button>
+                <button
+                  onClick={() => setAccuracyModal(null)}
+                  className="w-full py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

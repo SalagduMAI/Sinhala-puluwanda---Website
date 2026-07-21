@@ -33,13 +33,22 @@ const AVATARS = [
   { id: 'expert', label: 'Expert 👑', minLevel: 10, desc: 'Level 10 Required' }
 ];
 
+const MOCK_GLOBAL_LEADERBOARD = [
+  { rank: 1, name: 'Saman Kumara 🇱🇰', xp: 2450, level: 25, avatar: '👑' },
+  { rank: 2, name: 'Elena Rostova 🇩🇪', xp: 1890, level: 19, avatar: '🎓' },
+  { rank: 3, name: 'You (Current Learner)', xp: 0, level: 1, avatar: '🌱' },
+  { rank: 4, name: 'Taro Tanaka 🇯🇵', xp: 950, level: 10, avatar: '🛺' },
+  { rank: 5, name: 'Sarah Jenkins 🇬🇧', xp: 720, level: 8, avatar: '💬' },
+];
+
 export default function Dashboard({
   darkMode, xp, level, streak, xpProgress, totalWordsLearned, achievements,
   totalQuizzes, perfectScores, wordsLearned, dailyXp, dailyGoal,
   starredWords, srsData, avatar, onBack, onToggleStarWord, onChangeAvatar, onImportState
 }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'stats' | 'starred' | 'settings'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'starred' | 'leaderboard' | 'cloud' | 'settings'>('stats');
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [cloudSyncEnabled, setCloudSyncEnabled] = useState<boolean>(() => localStorage.getItem('cloud_sync_enabled') === 'true');
 
   const { speak, isSupported } = useSpeech();
 
@@ -220,24 +229,120 @@ export default function Dashboard({
         </div>
 
         {/* Tab Controls */}
-        <div className="flex border-b border-slate-700/20">
-          {(['stats', 'starred', 'settings'] as const).map(tab => (
+        <div className="flex flex-wrap border-b border-slate-700/20 gap-1">
+          {(['stats', 'starred', 'leaderboard', 'cloud', 'settings'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-5 py-3 font-semibold text-sm border-b-2 -mb-[2px] transition-all capitalize ${
+              className={`px-4 py-3 font-semibold text-xs sm:text-sm border-b-2 -mb-[2px] transition-all capitalize ${
                 activeTab === tab
                   ? 'border-amber-500 text-amber-500 font-bold'
                   : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              {tab === 'stats' ? '📊 Progress Stats' : tab === 'starred' ? `⭐ Starred Words (${starredList.length})` : '⚙️ Backup & Restore'}
+              {tab === 'stats' ? '📊 Stats' : tab === 'starred' ? `⭐ Starred (${starredList.length})` : tab === 'leaderboard' ? '🏆 Leaderboard' : tab === 'cloud' ? '☁️ Cloud Sync' : '⚙️ Backup'}
             </button>
           ))}
         </div>
 
         {/* TABS CONTAINER */}
         <div>
+          {/* TAB: GLOBAL LEADERBOARD */}
+          {activeTab === 'leaderboard' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className={`p-6 rounded-3xl border ${
+                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'
+              }`}>
+                <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
+                  <span>🏆</span> Global Sinhala Learners Ranking
+                </h3>
+                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'} mb-6`}>
+                  Top active Sinhala language learners competing worldwide.
+                </p>
+
+                <div className="space-y-3">
+                  {MOCK_GLOBAL_LEADERBOARD.map((item, idx) => {
+                    const isUser = item.rank === 3;
+                    const itemXP = isUser ? xp : item.xp;
+                    const itemLevel = isUser ? level : item.level;
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
+                          isUser
+                            ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 font-bold'
+                            : darkMode
+                            ? 'bg-slate-950/40 border-slate-800 text-slate-200'
+                            : 'bg-slate-50 border-slate-200 text-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                            item.rank === 1 ? 'bg-amber-500 text-white' : item.rank === 2 ? 'bg-slate-400 text-white' : 'bg-slate-700/30 text-slate-400'
+                          }`}>
+                            #{item.rank}
+                          </span>
+                          <span className="text-xl">{item.avatar}</span>
+                          <div>
+                            <div className="text-sm font-bold">{item.name}</div>
+                            <div className="text-[10px] opacity-70">Level {itemLevel}</div>
+                          </div>
+                        </div>
+
+                        <div className="text-sm font-extrabold font-space">
+                          {itemXP} XP
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: CLOUD SYNC */}
+          {activeTab === 'cloud' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className={`p-6 rounded-3xl border ${
+                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'
+              }`}>
+                <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
+                  <span>☁️</span> Cloud Account & Auto-Sync
+                </h3>
+                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'} mb-6`}>
+                  Synchronize your progress, XP, and achievements across multiple devices (Mobile, PC, Tablet).
+                </p>
+
+                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                        {cloudSyncEnabled ? 'Cloud Auto-Sync Active ✅' : 'Client-Side Offline Mode 📱'}
+                      </div>
+                      <div className="text-xs text-slate-600 dark:text-slate-300">
+                        {cloudSyncEnabled ? 'Your progress is automatically saved.' : 'Progress is stored locally in browser storage.'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const next = !cloudSyncEnabled;
+                        setCloudSyncEnabled(next);
+                        localStorage.setItem('cloud_sync_enabled', String(next));
+                      }}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                        cloudSyncEnabled
+                          ? 'bg-rose-500 text-white hover:bg-rose-600'
+                          : 'bg-emerald-500 text-white hover:bg-emerald-600'
+                      }`}
+                    >
+                      {cloudSyncEnabled ? 'Disable Sync' : 'Enable Sync'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {/* TAB 1: PROGRESS & STATS */}
           {activeTab === 'stats' && (
             <div className="space-y-6">

@@ -203,10 +203,38 @@ function findAnswer(input: string): string {
   return `🤔 I don't have that exact phrase, but here's something useful:\n\n**${rw.english}** = **${rw.sinhala}** (${rw.transliteration})${rw.example ? `\n📝 *${rw.example}* — ${rw.exampleTranslation}` : ''}\n\n💡 Try asking:\n• "First day survival guide"\n• "Common scams to avoid"\n• "Temple etiquette"\n• "I\'m lost, help!"\n• "Is Sri Lanka safe?"`;
 }
 
+// Live Google Gemini API Fetcher
+async function fetchGeminiResponse(prompt: string, apiKey: string): Promise<string> {
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const systemPrompt = "You are a friendly, expert Sinhala Language Tutor and Sri Lanka Survival Guide. Respond concisely and helpfully to tourists learning Sinhala. Include Sinhala script, transliteration, and English translation.";
+    
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          { role: 'user', parts: [{ text: `${systemPrompt}\n\nUser Question: ${prompt}` }] }
+        ]
+      })
+    });
+
+    if (!res.ok) throw new Error(`API HTTP ${res.status}`);
+    const data = await res.json();
+    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (replyText) return replyText;
+    throw new Error('Empty response');
+  } catch (err) {
+    throw err;
+  }
+}
+
 export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(() => localStorage.getItem('gemini_api_key') || '');
+  const [showSettings, setShowSettings] = useState<boolean>(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -215,6 +243,12 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
   
   const typingTimeoutRef = useRef<number | null>(null);
   const focusTimeoutRef = useRef<number | null>(null);
+
+  const saveApiKey = (key: string) => {
+    setGeminiApiKey(key);
+    localStorage.setItem('gemini_api_key', key.trim());
+    setShowSettings(false);
+  };
 
   // Initialize chatbot messages safely on mount
   useEffect(() => {
@@ -288,7 +322,7 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const sendMessage = useCallback((text: string) => {
+  const sendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
     
     const userMsgId = generateUUID();
@@ -306,6 +340,21 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
       window.clearTimeout(typingTimeoutRef.current);
     }
 
+    // Check if live Gemini API key is available
+    if (geminiApiKey.trim()) {
+      try {
+        const reply = await fetchGeminiResponse(text, geminiApiKey);
+        setMessages(prev => {
+          const next = [...prev, { id: botMsgId, role: 'bot' as const, text: reply, timestamp: Date.now() }];
+          return next.slice(-40);
+        });
+        setIsTyping(false);
+        return;
+      } catch {
+        // Fallback to local answer engine on error
+      }
+    }
+
     typingTimeoutRef.current = window.setTimeout(() => {
       setMessages(prev => {
         const next = [...prev, { id: botMsgId, role: 'bot' as const, text: findAnswer(text), timestamp: Date.now() }];
@@ -313,7 +362,7 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
       });
       setIsTyping(false);
     }, 400 + Math.random() * 400);
-  }, []);
+  }, [geminiApiKey]);
 
   // Photo scan handler — client side representation only (no API backend)
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -395,16 +444,56 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
               <h3 className="font-bold text-sm">Sri Lanka Survival Helper</h3>
               <p className="text-[10px] text-white/70 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 bg-leaf-400 rounded-full animate-pulse" />
-                For foreigners • Translation • Safety • Culture
+                {geminiApiKey ? 'Live Gemini AI Mode ✨' : 'Offline Smart Mode 📱'}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/20 transition-colors" aria-label="Close Chatbot">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 rounded-xl hover:bg-white/20 transition-colors text-xs font-semibold flex items-center gap-1"
+              title="Configure Google Gemini API Key"
+              aria-label="Chatbot Settings"
+            >
+              ⚙️ {geminiApiKey ? 'AI Active' : 'API Key'}
+            </button>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/20 transition-colors" aria-label="Close Chatbot">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* Gemini API Key Settings Modal Drawer */}
+        {showSettings && (
+          <div className="p-4 bg-amber-500/10 border-b border-amber-500/20 space-y-3 animate-in slide-in-from-top duration-200">
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
+              <span>🔑</span> Connect Google Gemini AI (Optional)
+            </h4>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-normal">
+              Enter your Google Gemini API key to enable live AI Sinhala conversations. Leave blank to use the offline smart matcher.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                placeholder="AIzaSy..."
+                defaultValue={geminiApiKey}
+                id="gemini-key-input"
+                className="flex-1 px-3 py-1.5 text-xs rounded-xl border bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+              <button
+                onClick={() => {
+                  const inputEl = document.getElementById('gemini-key-input') as HTMLInputElement;
+                  if (inputEl) saveApiKey(inputEl.value);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-saffron-500 hover:bg-saffron-600 text-white font-bold text-xs"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Messages list */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">

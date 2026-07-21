@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Lesson, Word } from '../data/lessons';
 import { useSpeech } from '../hooks/useSpeech';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
 interface LessonViewProps {
   lesson: Lesson;
@@ -21,6 +22,7 @@ function WordCard({
   onLearn: () => void; onSpeak: (text: string, romanizedFallback?: string) => void; onToggleStar: () => void;
 }) {
   const [flipped, setFlipped] = useState(false);
+  const { isListening, accuracyScore, startListening } = useSpeechRecognition();
 
   return (
     <div className="animate-slide-up" style={{ animationDelay: `${index * 0.04}s` }}>
@@ -70,17 +72,43 @@ function WordCard({
 
         {/* Sound button */}
         {soundEnabled && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onSpeak(word.sinhala, word.transliteration); }}
-            className={`absolute top-3 left-3 p-1.5 rounded-lg transition-colors z-10 ${
-              darkMode ? 'text-slate-600 hover:text-saffron-400 hover:bg-slate-800' : 'text-slate-300 hover:text-saffron-500 hover:bg-saffron-50'
-            }`}
-            aria-label={`Pronounce ${word.english} in Sinhala`}
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" clipRule="evenodd" />
-            </svg>
-          </button>
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
+            <button
+              onClick={(e) => { e.stopPropagation(); onSpeak(word.sinhala, word.transliteration); }}
+              className={`p-1.5 rounded-lg transition-colors ${
+                darkMode ? 'text-slate-400 hover:text-saffron-400 hover:bg-slate-800' : 'text-slate-500 hover:text-saffron-500 hover:bg-saffron-50'
+              }`}
+              aria-label={`Pronounce ${word.english} in Sinhala`}
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" clipRule="evenodd" />
+              </svg>
+            </button>
+
+            {/* Mic Pronunciation Evaluator */}
+            <button
+              onClick={(e) => { e.stopPropagation(); startListening(word.sinhala, word.transliteration); }}
+              className={`p-1.5 rounded-lg transition-all ${
+                isListening
+                  ? 'bg-rose-500 text-white animate-pulse'
+                  : darkMode
+                  ? 'text-slate-400 hover:text-emerald-400 hover:bg-slate-800'
+                  : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
+              }`}
+              title="Click & Speak into Microphone to test your pronunciation"
+              aria-label="Test Pronunciation with Mic"
+            >
+              🎙️
+            </button>
+
+            {accuracyScore !== null && (
+              <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md ${
+                accuracyScore >= 75 ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'
+              }`}>
+                {accuracyScore}%
+              </span>
+            )}
+          </div>
         )}
 
         {!flipped ? (
