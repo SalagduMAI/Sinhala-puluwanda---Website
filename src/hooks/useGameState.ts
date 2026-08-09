@@ -113,12 +113,13 @@ export function useGameState() {
     if (s.dailyGoalDate !== today) {
       s.dailyXpEarned = 0;
       s.dailyGoalDate = today;
-      s.achievements = s.achievements.filter(id => id !== 'daily_goal');
     }
     if (s.lastActiveDate && s.lastActiveDate !== today) {
-      const lastDate = new Date(s.lastActiveDate + 'T00:00:00');
-      const currentDate = new Date(today + 'T00:00:00');
-      const diff = Math.floor((currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+      const lastParts = s.lastActiveDate.split('-').map(Number);
+      const todayParts = today.split('-').map(Number);
+      const lastDays = lastParts[0] * 365 + lastParts[1] * 31 + lastParts[2];
+      const todayDays = todayParts[0] * 365 + todayParts[1] * 31 + todayParts[2];
+      const diff = todayDays - lastDays;
       if (diff > 1) {
         s.streak = 0;
       }

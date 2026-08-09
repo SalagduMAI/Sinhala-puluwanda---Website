@@ -48,7 +48,11 @@ export default function ConversationView({ darkMode, soundEnabled, onBack }: Con
           {conversations.map((c, i) => (
             <button
               key={i}
-              onClick={() => { setActiveConvo(i); resetConvo(); }}
+              onClick={() => { 
+                window.speechSynthesis.cancel(); 
+                setActiveConvo(i); 
+                resetConvo(); 
+              }}
               className={`flex-shrink-0 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${
                 activeConvo === i
                   ? 'bg-gradient-to-r from-saffron-500 to-saffron-600 text-white shadow-lg shadow-saffron-500/20'

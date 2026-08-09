@@ -45,14 +45,9 @@ export default function Navbar({ level, xp, xpProgress, streak, darkMode, onTogg
 
   // Escape key closes mobile menu
   useEffect(() => {
-    if (!showMobile) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowMobile(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowMobile(false); };
+    if (showMobile) window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
   }, [showMobile]);
 
   // Lock body scroll when mobile menu is open
@@ -199,7 +194,7 @@ export default function Navbar({ level, xp, xpProgress, streak, darkMode, onTogg
       </nav>
 
       {/* Mobile fullscreen drawer */}
-      <div className={`fixed inset-0 z-40 lg:hidden transition-all duration-500 ${showMobile ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+      <div className={`fixed inset-0 z-40 lg:hidden transition-all duration-500 ${showMobile ? 'pointer-events-auto' : 'pointer-events-none'}`} role="dialog" aria-modal="true" aria-label="Navigation Menu">
         {/* Overlay */}
         <div className={`absolute inset-0 bg-black/60 transition-opacity duration-500 ${showMobile ? 'opacity-100' : 'opacity-0'}`} onClick={() => setShowMobile(false)} />
 

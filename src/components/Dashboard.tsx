@@ -22,7 +22,7 @@ interface DashboardProps {
   onBack: () => void;
   onToggleStarWord: (lessonId: number, wordIndex: number) => void;
   onChangeAvatar: (avatarId: string) => void;
-  onImportState: (state: any) => boolean;
+  onImportState: (state: Record<string, unknown>) => boolean;
 }
 
 const AVATARS = [
@@ -33,13 +33,19 @@ const AVATARS = [
   { id: 'expert', label: 'Expert 👑', minLevel: 10, desc: 'Level 10 Required' }
 ];
 
-const MOCK_GLOBAL_LEADERBOARD = [
-  { rank: 1, name: 'Saman Kumara 🇱🇰', xp: 2450, level: 25, avatar: '👑' },
-  { rank: 2, name: 'Elena Rostova 🇩🇪', xp: 1890, level: 19, avatar: '🎓' },
-  { rank: 3, name: 'You (Current Learner)', xp: 0, level: 1, avatar: '🌱' },
-  { rank: 4, name: 'Taro Tanaka 🇯🇵', xp: 950, level: 10, avatar: '🛺' },
-  { rank: 5, name: 'Sarah Jenkins 🇬🇧', xp: 720, level: 8, avatar: '💬' },
-];
+const getLeaderboard = (userXp: number, userLevel: number) => {
+  const mockUsers = [
+    { name: 'Saman Kumara 🇱🇰', xp: 2450, level: 25, avatar: '👑' },
+    { name: 'Elena Rostova 🇩🇪', xp: 1890, level: 19, avatar: '🎓' },
+    { name: 'Taro Tanaka 🇯🇵', xp: 950, level: 10, avatar: '🛺' },
+    { name: 'Sarah Jenkins 🇬🇧', xp: 720, level: 8, avatar: '💬' },
+  ];
+  const allEntries = [
+    ...mockUsers,
+    { name: 'You (Current Learner)', xp: userXp, level: userLevel, avatar: '🌱', isUser: true }
+  ].sort((a, b) => b.xp - a.xp).map((entry, idx) => ({ ...entry, rank: idx + 1 }));
+  return allEntries;
+};
 
 export default function Dashboard({
   darkMode, xp, level, streak, xpProgress, totalWordsLearned, achievements,
@@ -127,15 +133,20 @@ export default function Dashboard({
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
+        const requiredKeys = ['xp', 'level', 'streak', 'wordsLearned'];
+        const isValid = requiredKeys.every(k => k in parsed);
+        if (!isValid) {
+          alert('❌ Invalid backup file: missing required fields.');
+          return;
+        }
         const success = onImportState(parsed);
         if (success) {
-          alert('🎉 Progress successfully restored! Re-loading dashboard...');
-          window.location.reload();
+          setTimeout(() => window.location.reload(), 200);
         } else {
-          alert('❌ Invalid backup file. Please upload a valid JSON backup file.');
+          console.error('❌ Invalid backup file. Please upload a valid JSON backup file.');
         }
       } catch (err) {
-        alert('❌ Error reading backup file. Make sure it is a valid JSON file.');
+        console.error('❌ Error reading backup file. Make sure it is a valid JSON file.');
       }
     };
     reader.readAsText(file);
@@ -261,8 +272,8 @@ export default function Dashboard({
                 </p>
 
                 <div className="space-y-3">
-                  {MOCK_GLOBAL_LEADERBOARD.map((item, idx) => {
-                    const isUser = item.rank === 3;
+                  {getLeaderboard(xp, level).map((item, idx) => {
+                    const isUser = 'isUser' in item && item.isUser;
                     const itemXP = isUser ? xp : item.xp;
                     const itemLevel = isUser ? level : item.level;
 
@@ -492,6 +503,23 @@ export default function Dashboard({
                     );
                   })}
                 </div>
+
+                {/* Share Progress Button (#48) */}
+                {'share' in navigator && (
+                  <button
+                    onClick={() => {
+                      const shareText = `🇱🇰 I'm learning Sinhala! Level ${level} with ${xp} XP, ${totalWordsLearned} words learned, and ${achievements.length} achievements unlocked on සිංහල පුළුවන්ද? 🎉`;
+                      navigator.share?.({
+                        title: 'සිංහල පුළුවන්ද? — My Progress',
+                        text: shareText,
+                        url: window.location.href,
+                      }).catch(() => {});
+                    }}
+                    className="mt-4 w-full py-3 rounded-2xl border font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-saffron-500 to-saffron-600 text-white border-saffron-500/50 shadow-lg shadow-saffron-500/10"
+                  >
+                    📤 Share My Progress
+                  </button>
+                )}
               </div>
             </div>
           )}

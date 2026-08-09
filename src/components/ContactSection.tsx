@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { APP_VERSION, SOCIALS } from '../constants';
 
+const FORMSPREE_ENDPOINT = 'https://formspree.io/f/mdajnqee';
+
 interface ContactSectionProps {
   darkMode: boolean;
 }
@@ -23,7 +25,7 @@ export default function ContactSection({ darkMode }: ContactSectionProps) {
     e.preventDefault();
 
     try {
-      const response = await fetch("https://formspree.io/f/mdajnqee", {
+      const response = await fetch(FORMSPREE_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -48,7 +48,18 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
     }));
   }, [showConfetti]);
 
-  if (questions.length === 0) return null;
+  if (questions.length === 0) return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="text-center space-y-4">
+        <span className="text-5xl">📝</span>
+        <h2 className="text-xl font-bold">No Questions Available</h2>
+        <p className="text-slate-500 text-sm">This lesson doesn't have enough words for a quiz yet.</p>
+        <button onClick={onBack} className="px-6 py-3 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold rounded-xl hover:scale-105 transition-all">
+          ← Back to Lessons
+        </button>
+      </div>
+    </div>
+  );
 
   const currentQuestion = questions[currentIndex];
 

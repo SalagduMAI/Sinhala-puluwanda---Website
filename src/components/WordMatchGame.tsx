@@ -31,6 +31,7 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
   const { speak, isSupported } = useSpeech();
   const [selected, setSelected] = useState<number[]>([]);
   const [matches, setMatches] = useState(0);
+  const [totalPairs, setTotalPairs] = useState(6);
   const [moves, setMoves] = useState(0);
   const [timer, setTimer] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -39,16 +40,27 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
   
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const timerValueRef = useRef(0);
+  const pairCountRef = useRef(6);
+  const isProcessingRef = useRef(false);
+  const matchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Sync ref with timer state to prevent stale closures
   useEffect(() => {
     timerValueRef.current = timer;
   }, [timer]);
 
+  useEffect(() => {
+    return () => {
+      if (matchTimeoutRef.current) clearTimeout(matchTimeoutRef.current);
+    };
+  }, []);
+
   const initGame = useCallback(() => {
     // Pick 6 random words from all lessons
     const allWords = lessons.flatMap(l => l.words);
     const shuffledWords = shuffleArray(allWords).slice(0, 6);
+    pairCountRef.current = shuffledWords.length;
+    setTotalPairs(shuffledWords.length);
 
     const cardPairs: Card[] = [];
     shuffledWords.forEach((word, i) => {
@@ -78,6 +90,7 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
   }, [isRunning]);
 
   const handleCardClick = (cardId: number) => {
+    if (isProcessingRef.current) return;
     if (!isRunning) setIsRunning(true);
 
     const card = cards.find(c => c.id === cardId);
@@ -95,6 +108,7 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
     setSelected(newSelected);
 
     if (newSelected.length === 2) {
+      isProcessingRef.current = true;
       setMoves(m => m + 1);
       const [firstId, secondId] = newSelected;
       const first = newCards.find(c => c.id === firstId)!;
@@ -102,15 +116,16 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
 
       if (first.pairId === second.pairId && first.type !== second.type) {
         // Match!
-        setTimeout(() => {
+        matchTimeoutRef.current = setTimeout(() => {
           setCards(prev => prev.map(c =>
             c.id === firstId || c.id === secondId ? { ...c, isMatched: true } : c
           ));
           const newMatches = matches + 1;
           setMatches(newMatches);
           setSelected([]);
+          isProcessingRef.current = false;
 
-          if (newMatches === 6) {
+          if (newMatches === pairCountRef.current) {
             setIsRunning(false);
             setIsComplete(true);
             onComplete();
@@ -126,11 +141,12 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
         }, 500);
       } else {
         // No match
-        setTimeout(() => {
+        matchTimeoutRef.current = setTimeout(() => {
           setCards(prev => prev.map(c =>
             c.id === firstId || c.id === secondId ? { ...c, isFlipped: false } : c
           ));
           setSelected([]);
+          isProcessingRef.current = false;
         }, 800);
       }
     }
@@ -218,14 +234,14 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
               <p className={`text-[10px] ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Moves</p>
             </div>
             <div className={`text-center px-3 py-1.5 rounded-xl ${darkMode ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-200'}`}>
-              <p className={`text-lg font-bold ${darkMode ? 'text-leaf-400' : 'text-leaf-600'}`}>{matches}/6</p>
+              <p className={`text-lg font-bold ${darkMode ? 'text-leaf-400' : 'text-leaf-600'}`}>{matches}/{totalPairs}</p>
               <p className={`text-[10px] ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Pairs</p>
             </div>
           </div>
         </div>
 
         <p className={`text-sm mb-6 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-          Match each Sinhala word with its English translation. Find all 6 pairs!
+          Match each Sinhala word with its English translation. Find all {totalPairs} pairs!
         </p>
 
         {/* Card grid */}

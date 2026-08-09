@@ -16,19 +16,19 @@ interface LessonViewProps {
 }
 
 function WordCard({
-  word, index, isLearned, isStarred, darkMode, soundEnabled, onLearn, onSpeak, onToggleStar
+  word, index, isLearned, isStarred, darkMode, soundEnabled, onLearn, onSpeak, onToggleStar,
+  isListening, accuracyScore, onStartListening
 }: {
   word: Word; index: number; isLearned: boolean; isStarred: boolean; darkMode: boolean; soundEnabled: boolean;
   onLearn: () => void; onSpeak: (text: string, romanizedFallback?: string) => void; onToggleStar: () => void;
+  isListening: boolean; accuracyScore: number | null; onStartListening: () => void;
 }) {
   const [flipped, setFlipped] = useState(false);
-  const { isListening, accuracyScore, startListening } = useSpeechRecognition();
 
   return (
     <div className="animate-slide-up" style={{ animationDelay: `${index * 0.04}s` }}>
       <div
-        role="button"
-        tabIndex={0}
+        role="group"
         aria-expanded={flipped}
         aria-label={`Vocabulary Card ${index + 1}: ${word.english}. ${isLearned ? 'Learned' : 'Not learned'}`}
         onClick={() => setFlipped(!flipped)}
@@ -87,7 +87,7 @@ function WordCard({
 
             {/* Mic Pronunciation Evaluator */}
             <button
-              onClick={(e) => { e.stopPropagation(); startListening(word.sinhala, word.transliteration); }}
+              onClick={(e) => { e.stopPropagation(); onStartListening(); }}
               className={`p-1.5 rounded-lg transition-all ${
                 isListening
                   ? 'bg-rose-500 text-white animate-pulse'
@@ -178,8 +178,10 @@ export default function LessonView({
   lesson, darkMode, soundEnabled, onBack, onStartQuiz, onWordLearned, learnedWords, starredWords, onToggleStarWord
 }: LessonViewProps) {
   const [showCelebration, setShowCelebration] = useState(false);
+  const [activeMicIndex, setActiveMicIndex] = useState<number | null>(null);
   const progress = Math.round((learnedWords.length / lesson.words.length) * 100);
   const { speak } = useSpeech();
+  const { isListening, accuracyScore, startListening } = useSpeechRecognition();
 
   const handleLearnWord = (idx: number) => {
     onWordLearned(lesson.id, idx);
@@ -259,6 +261,12 @@ export default function LessonView({
               onLearn={() => handleLearnWord(index)}
               onSpeak={speak}
               onToggleStar={() => onToggleStarWord(lesson.id, index)}
+              isListening={isListening && activeMicIndex === index}
+              accuracyScore={activeMicIndex === index ? accuracyScore : null}
+              onStartListening={() => {
+                setActiveMicIndex(index);
+                startListening(word.sinhala, word.transliteration);
+              }}
             />
           ))}
         </div>
@@ -276,7 +284,7 @@ export default function LessonView({
               <p className="sinhala-text text-amber-500 font-bold" lang="si">පාඩම සම්පූර්ණයි!</p>
             </div>
             <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'} leading-relaxed`}>
-              Incredible work! You have marked all 12 vocabulary words in **{lesson.title}** as learned. You are making fast progress!
+              Incredible work! You have marked all {lesson.words.length} vocabulary words in {lesson.title} as learned. You are making fast progress!
             </p>
             <div className="flex flex-col gap-2 pt-2">
               <button

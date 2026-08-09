@@ -145,7 +145,7 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
       </div>
 
       {/* Floating Sinhala letters */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         {['අ', 'ආ', 'ක', 'ම', 'ස', 'හ', 'ල', 'ර', 'ප', 'බ'].map((letter, i) => (
           <div key={i} className="absolute sinhala-text text-white/[0.02] text-5xl sm:text-7xl font-bold animate-float select-none"
             style={{ left: `${(i * 10)}%`, top: `${(i * 9 + 5) % 85}%`, animationDuration: `${5 + i * 0.7}s`, animationDelay: `${i * 0.45}s` }}>
@@ -155,11 +155,11 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
       </div>
 
       {/* Cultural icons */}
-      <div className="absolute top-32 left-[6%] text-4xl sm:text-5xl animate-float opacity-10 hidden sm:block">🪷</div>
-      <div className="absolute top-[42%] right-[5%] text-3xl sm:text-4xl animate-float opacity-8 hidden sm:block" style={{ animationDelay: '1s' }}>🐘</div>
-      <div className="absolute bottom-[22%] left-[8%] text-2xl sm:text-3xl animate-float opacity-8 hidden md:block" style={{ animationDelay: '2s' }}>🛕</div>
-      <div className="absolute bottom-[38%] right-[10%] text-3xl animate-float opacity-8 hidden md:block" style={{ animationDelay: '0.5s' }}>🌺</div>
-      <div className="absolute top-[65%] left-[35%] text-2xl animate-float opacity-6 hidden lg:block" style={{ animationDelay: '3s' }}>🫖</div>
+      <div className="absolute top-32 left-[6%] text-4xl sm:text-5xl animate-float opacity-10 hidden sm:block" aria-hidden="true">🪷</div>
+      <div className="absolute top-[42%] right-[5%] text-3xl sm:text-4xl animate-float opacity-8 hidden sm:block" style={{ animationDelay: '1s' }} aria-hidden="true">🐘</div>
+      <div className="absolute bottom-[22%] left-[8%] text-2xl sm:text-3xl animate-float opacity-8 hidden md:block" style={{ animationDelay: '2s' }} aria-hidden="true">🛕</div>
+      <div className="absolute bottom-[38%] right-[10%] text-3xl animate-float opacity-8 hidden md:block" style={{ animationDelay: '0.5s' }} aria-hidden="true">🌺</div>
+      <div className="absolute top-[65%] left-[35%] text-2xl animate-float opacity-6 hidden lg:block" style={{ animationDelay: '3s' }} aria-hidden="true">🫖</div>
 
       {/* ========== CONTENT ========== */}
       <div className="relative z-10 text-center px-5 sm:px-6 max-w-5xl mx-auto pt-20 sm:pt-24 pb-8">
@@ -232,7 +232,7 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
           </div>
           <div className="flex justify-center gap-1.5 mt-3">
             {culturalFacts.map((_, i) => (
-              <button key={i} onClick={() => setFactIndex(i)}
+              <button key={i} onClick={() => setFactIndex(i)} aria-label={`Go to fact ${i + 1}`}
                 className={`h-1 rounded-full transition-all duration-500 ${i === factIndex ? 'w-6 bg-saffron-400' : 'w-1.5 bg-white/15 hover:bg-white/30'}`} />
             ))}
           </div>

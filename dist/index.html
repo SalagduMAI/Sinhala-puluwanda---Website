@@ -34,9 +34,22 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap"
     rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-ZC0LZMB1.js"></script>
+  <script>
+    (function() {
+      try {
+        var stored = localStorage.getItem('sinhala-puluwanda-v2');
+        if (stored) {
+          var parsed = JSON.parse(stored);
+          if (parsed && parsed.darkMode) {
+            document.documentElement.classList.add('dark');
+          }
+        }
+      } catch(e) {}
+    })();
+  </script>
+  <script type="module" crossorigin src="/assets/index-DGCE8gqp.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/vendor-BnfF7MAh.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-LrxJNGeN.css">
+  <link rel="stylesheet" crossorigin href="/assets/index-DN5P9VmY.css">
 </head>
 
 <body class="antialiased">

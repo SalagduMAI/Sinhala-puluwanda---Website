@@ -95,8 +95,8 @@ export default function PracticeSection({
           {activities.map((activity, i) => (
             <button
               key={i}
-              onClick={activity.locked ? undefined : activity.action}
-              disabled={activity.locked}
+              onClick={activity.locked ? (e: React.MouseEvent) => e.preventDefault() : activity.action}
+              aria-disabled={activity.locked ? 'true' : undefined}
               className={`group text-left rounded-2xl sm:rounded-3xl p-5 sm:p-7 transition-all duration-400 card-3d relative overflow-hidden ${
                 activity.locked
                   ? 'opacity-60 cursor-not-allowed border-dashed'

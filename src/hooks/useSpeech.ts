@@ -3,7 +3,13 @@ import { useCallback, useState, useEffect } from 'react';
 export type VoiceGender = 'male' | 'female';
 
 export function useSpeech() {
-  const [voiceGender, setVoiceGender] = useState<VoiceGender>('female');
+  const [voiceGender, setVoiceGender] = useState<VoiceGender>(() => {
+    try {
+      const saved = localStorage.getItem('sinhala_voice_gender');
+      if (saved === 'male' || saved === 'female') return saved;
+    } catch {}
+    return 'female';
+  });
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   // Load voices (they load async in some browsers)
@@ -84,7 +90,11 @@ export function useSpeech() {
   }, [isSupported]);
 
   const toggleGender = useCallback(() => {
-    setVoiceGender(prev => prev === 'female' ? 'male' : 'female');
+    setVoiceGender(prev => {
+      const next = prev === 'female' ? 'male' : 'female';
+      try { localStorage.setItem('sinhala_voice_gender', next); } catch {}
+      return next;
+    });
   }, []);
 
   return { speak, isSupported, voiceGender, toggleGender, setVoiceGender };

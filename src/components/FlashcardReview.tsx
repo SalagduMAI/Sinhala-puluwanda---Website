@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { lessons } from '../data/lessons';
 import { useSpeech } from '../hooks/useSpeech';
 
@@ -69,7 +69,26 @@ export default function FlashcardReview({
 
   // Active pool depends on selection
   const activePool = reviewAll ? learnedWords : dueWords;
-  const currentCard = activePool[currentIndex];
+  
+  const [sessionStarted, setSessionStarted] = useState(false);
+  const poolSnapshotRef = useRef<typeof learnedWords>([]);
+
+  const startSession = (pool: typeof learnedWords) => {
+    poolSnapshotRef.current = [...pool];
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setSessionXP(0);
+    setSessionCount(0);
+    setSessionStarted(true);
+  };
+
+  useEffect(() => {
+    if (!sessionStarted && activePool.length > 0) {
+      startSession(activePool);
+    }
+  }, [sessionStarted, activePool]);
+
+  const currentCard = sessionStarted ? poolSnapshotRef.current[currentIndex] : undefined;
 
   const handleFlip = () => {
     setIsFlipped(prev => !prev);
@@ -92,13 +111,13 @@ export default function FlashcardReview({
 
     // Wait for card flip animation to finish before changing word
     setTimeout(() => {
-      if (currentIndex < activePool.length - 1) {
+      if (currentIndex < poolSnapshotRef.current.length - 1) {
         setCurrentIndex(prev => prev + 1);
       } else {
         // End of pool reached
-        setCurrentIndex(activePool.length);
+        setCurrentIndex(poolSnapshotRef.current.length);
       }
-    }, 250);
+    }, 300);
   };
 
   const handlePlaySound = (e: React.MouseEvent) => {
@@ -109,10 +128,7 @@ export default function FlashcardReview({
   };
 
   const resetSession = () => {
-    setCurrentIndex(0);
-    setIsFlipped(false);
-    setSessionXP(0);
-    setSessionCount(0);
+    startSession(activePool);
   };
 
   // UI rendering states
@@ -139,7 +155,7 @@ export default function FlashcardReview({
   }
 
   // Session completed view
-  if (currentCard === undefined && activePool.length > 0) {
+  if (sessionStarted && currentCard === undefined && poolSnapshotRef.current.length > 0) {
     return (
       <div className={`min-h-screen ${darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} py-12 px-4 flex items-center justify-center font-sans`}>
         <div className={`max-w-md w-full rounded-3xl p-8 border text-center space-y-6 ${
@@ -197,7 +213,7 @@ export default function FlashcardReview({
           </p>
           <div className="flex flex-col gap-2 pt-2">
             <button
-              onClick={() => { setReviewAll(true); setCurrentIndex(0); }}
+              onClick={() => { setReviewAll(true); startSession(learnedWords); }}
               className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all duration-200"
             >
               Review All Learned Words ({learnedWords.length})
@@ -235,7 +251,7 @@ export default function FlashcardReview({
             <div>
               <h1 className="text-xl sm:text-2xl font-black font-space">Leitner Flashcards</h1>
               <p className={`text-xs sm:text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                Card {currentIndex + 1} of {activePool.length} {reviewAll ? '(All Mode)' : '(Due Mode)'}
+                Card {currentIndex + 1} of {poolSnapshotRef.current.length} {reviewAll ? '(All Mode)' : '(Due Mode)'}
               </p>
             </div>
           </div>
@@ -249,6 +265,10 @@ export default function FlashcardReview({
         {/* 3D Flip Flashcard */}
         <div 
           onClick={handleFlip}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleFlip(); } }}
+          role="button"
+          tabIndex={0}
+          aria-label={isFlipped ? 'Card showing English translation. Click to flip back.' : 'Card showing Sinhala word. Click to flip and reveal translation.'}
           className="relative w-full h-[360px] sm:h-[400px] cursor-pointer group select-none"
           style={{ perspective: '1000px' }}
         >
@@ -272,7 +292,7 @@ export default function FlashcardReview({
 
               <div className="text-center space-y-4">
                 <h2 className="text-5xl sm:text-6xl font-extrabold tracking-normal text-slate-900 dark:text-white font-sans" lang="si">
-                  {currentCard.sinhala}
+                  {currentCard?.sinhala}
                 </h2>
                 {soundEnabled && (
                   <button
@@ -305,25 +325,25 @@ export default function FlashcardReview({
                   Translation
                 </span>
                 <span className="text-xs font-medium text-slate-400">
-                  {currentCard.romanized}
+                  {currentCard?.romanized}
                 </span>
               </div>
 
               {/* Middle Row (Content) */}
               <div className="space-y-4 text-center my-auto">
                 <h3 className="text-3xl sm:text-4xl font-black tracking-tight text-emerald-500 font-space">
-                  {currentCard.english}
+                  {currentCard?.english}
                 </h3>
-                {currentCard.example && (
+                {currentCard?.example && (
                   <div className={`p-4 rounded-2xl text-left text-xs ${
                     darkMode ? 'bg-slate-950 border border-slate-800' : 'bg-slate-50 border border-slate-200'
                   } space-y-1 max-w-sm mx-auto`}>
                     <div className="font-bold text-slate-500">Example:</div>
                     <div className="sinhala-text font-semibold text-slate-800 dark:text-slate-200" lang="si">
-                      {currentCard.example}
+                      {currentCard?.example}
                     </div>
                     <div className="text-slate-400 italic">
-                      {currentCard.exampleTranslation}
+                      {currentCard?.exampleTranslation}
                     </div>
                   </div>
                 )}

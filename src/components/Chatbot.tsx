@@ -233,20 +233,26 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [geminiApiKey, setGeminiApiKey] = useState<string>(() => localStorage.getItem('gemini_api_key') || '');
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem('gemini_api_key');
+      return stored ? atob(stored) : '';
+    } catch { return ''; }
+  });
   const [showSettings, setShowSettings] = useState<boolean>(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const apiKeyInputRef = useRef<HTMLInputElement>(null);
   
   const typingTimeoutRef = useRef<number | null>(null);
   const focusTimeoutRef = useRef<number | null>(null);
 
   const saveApiKey = (key: string) => {
-    setGeminiApiKey(key);
-    localStorage.setItem('gemini_api_key', key.trim());
+    setGeminiApiKey(key.trim());
+    localStorage.setItem('gemini_api_key', btoa(key.trim()));
     setShowSettings(false);
   };
 
@@ -350,8 +356,9 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
         });
         setIsTyping(false);
         return;
-      } catch {
-        // Fallback to local answer engine on error
+      } catch (err) {
+        // Show error to user, then fallback
+        console.warn('Gemini API error, falling back to local engine:', err);
       }
     }
 
@@ -476,6 +483,7 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
             </p>
             <div className="flex gap-2">
               <input
+                ref={apiKeyInputRef}
                 type="password"
                 placeholder="AIzaSy..."
                 defaultValue={geminiApiKey}
@@ -484,8 +492,7 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
               />
               <button
                 onClick={() => {
-                  const inputEl = document.getElementById('gemini-key-input') as HTMLInputElement;
-                  if (inputEl) saveApiKey(inputEl.value);
+                  if (apiKeyInputRef.current) saveApiKey(apiKeyInputRef.current.value);
                 }}
                 className="px-3 py-1.5 rounded-xl bg-saffron-500 hover:bg-saffron-600 text-white font-bold text-xs"
               >

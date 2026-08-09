@@ -53,7 +53,7 @@ export const GrammarSection: React.FC<GrammarSectionProps> = ({ onAddXP }) => {
           return (
             <button
               key={lesson.id}
-              onClick={() => setActiveLessonId(lesson.id)}
+              onClick={() => { setActiveLessonId(lesson.id); setSelectedAnswers({}); setSubmittedQuizzes({}); }}
               className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl font-medium transition-all duration-200 border text-xs sm:text-sm shrink-0 whitespace-nowrap ${
                 isActive
                   ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-transparent shadow-lg shadow-emerald-500/20 scale-[1.02]'
@@ -126,6 +126,7 @@ export const GrammarSection: React.FC<GrammarSectionProps> = ({ onAddXP }) => {
                     onClick={() => speak(eg.sinhala, eg.transliteration)}
                     className="p-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white transition-all duration-200 shadow-md shadow-emerald-500/20 shrink-0"
                     title="Pronounce Sentence"
+                    aria-label="Pronounce sentence"
                   >
                     🔊
                   </button>
@@ -175,6 +176,8 @@ export const GrammarSection: React.FC<GrammarSectionProps> = ({ onAddXP }) => {
                             className={`w-full text-left p-3 rounded-xl border text-sm transition-all duration-150 ${optStyle}`}
                           >
                             {opt}
+                            {isSubmitted && optIdx === quiz.correctIndex && " ✓"}
+                            {isSubmitted && selected === optIdx && !isCorrect && " ✗"}
                           </button>
                         );
                       })}

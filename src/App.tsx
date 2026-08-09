@@ -227,7 +227,7 @@ export default function App() {
         if (state.level >= 2) {
           setChatOpen(true);
         } else {
-          alert('🔒 AI Sinhala Helper is locked. Reach Level 2 to unlock!');
+          // Don't open chat - button visual state already indicates locked
         }
       }}
       className="fixed bottom-5 right-5 z-[80] w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-saffron-500 to-saffron-600 rounded-2xl shadow-xl shadow-saffron-500/30 hover:shadow-saffron-500/50 flex items-center justify-center text-2xl sm:text-3xl hover:scale-110 active:scale-95 transition-all duration-300 group"
@@ -363,7 +363,7 @@ export default function App() {
                 if (state.level >= 2) {
                   setChatOpen(true);
                 } else {
-                  alert('🔒 AI Sinhala Helper is locked. Reach Level 2 to unlock!');
+                  // Don't open chat - button visual state already indicates locked
                 }
               }}
             />

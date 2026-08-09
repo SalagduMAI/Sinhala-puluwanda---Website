@@ -63,6 +63,10 @@ export function calculateStringSimilarity(str1: string, str2: string): number {
   return Math.max(0, Math.round(similarity));
 }
 
+function isSinhalaScript(text: string): boolean {
+  return /[\u0D80-\u0DFF]/.test(text);
+}
+
 export function useSpeechRecognition() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -104,10 +108,16 @@ export function useSpeechRecognition() {
           setTranscript(spokenText);
 
           if (targetWord || targetTransliteration) {
-            // Calculate similarity score against Sinhala word or transliteration
-            const score1 = targetWord ? calculateStringSimilarity(spokenText, targetWord) : 0;
-            const score2 = targetTransliteration ? calculateStringSimilarity(spokenText, targetTransliteration) : 0;
-            const finalScore = Math.max(score1, score2, Math.min(100, Math.round(lastResult[0].confidence * 100)));
+            let score1 = 0, score2 = 0;
+            const isSinhala = isSinhalaScript(spokenText);
+            if (targetWord && isSinhala) {
+              score1 = calculateStringSimilarity(spokenText, targetWord);
+            }
+            if (targetTransliteration && !isSinhala) {
+              score2 = calculateStringSimilarity(spokenText, targetTransliteration);
+            }
+            const confidenceScore = Math.min(100, Math.round(lastResult[0].confidence * 100));
+            const finalScore = Math.max(score1, score2, confidenceScore);
             setAccuracyScore(finalScore);
           }
         }

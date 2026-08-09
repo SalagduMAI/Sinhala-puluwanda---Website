@@ -67,24 +67,33 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     });
   }, [strokes]);
 
-  // Adjust canvas size to match visual bounding box
+  // Canvas sizing — only on mount + resize
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
+    const resizeCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+      }
+      redrawCanvas();
+    };
+    resizeCanvas();
+    const observer = new ResizeObserver(resizeCanvas);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    }
-    redrawCanvas();
-  }, [redrawCanvas]);
-
+  // Redraw strokes when they change
   useEffect(() => {
     redrawCanvas();
-  }, [strokes, redrawCanvas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [strokes]);
 
   // Handle letter switch
   const handleLetterChange = (idx: number) => {

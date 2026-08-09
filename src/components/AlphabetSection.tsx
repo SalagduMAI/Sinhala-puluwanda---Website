@@ -33,7 +33,7 @@ export default function AlphabetSection({ darkMode, soundEnabled }: AlphabetSect
   };
 
   const handlePlayCustomWord = () => {
-    if (customWord.trim() && isSupported) {
+    if (customWord.trim() && isSupported && soundEnabled) {
       speak(customWord.trim());
     }
   };
@@ -163,18 +163,19 @@ export default function AlphabetSection({ darkMode, soundEnabled }: AlphabetSect
             </div>
           </div>
           
-          <div className="flex gap-2">
+          <form onSubmit={(e) => { e.preventDefault(); handlePlayCustomWord(); }} className="flex gap-2">
             <input
               type="text"
               placeholder="e.g., ආයුබෝවන්, ස්තූතියි..."
               value={customWord}
               onChange={(e) => setCustomWord(e.target.value)}
+              aria-label="Enter a Sinhala word to hear pronunciation"
               className={`flex-1 px-4 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-saffron-500 ${
                 darkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-950'
               }`}
             />
             <button
-              onClick={handlePlayCustomWord}
+              type="submit"
               disabled={!customWord.trim()}
               className={`px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm text-white bg-gradient-to-r from-saffron-500 to-saffron-600 hover:from-saffron-400 hover:to-saffron-500 transition-all ${
                 !customWord.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95 shadow-md shadow-saffron-500/10'
@@ -182,7 +183,7 @@ export default function AlphabetSection({ darkMode, soundEnabled }: AlphabetSect
             >
               Speak
             </button>
-          </div>
+          </form>
         </div>
 
         {/* Info cards */}
