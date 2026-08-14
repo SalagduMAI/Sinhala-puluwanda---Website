@@ -57,16 +57,22 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
     return () => clearInterval(interval);
   }, []);
 
-  // Cross-fade between cultural videos every 8 seconds
+  // Cross-fade between cultural videos every 8 seconds with clean timer cancellation
   useEffect(() => {
-    const interval = setInterval(() => {
+    let t1: number;
+    let t2: number;
+    const interval = window.setInterval(() => {
       setCaptionVisible(false);
-      setTimeout(() => {
+      t1 = window.setTimeout(() => {
         setActiveVideo(prev => (prev + 1) % SRI_LANKA_VIDEOS.length);
-        setTimeout(() => setCaptionVisible(true), 800);
+        t2 = window.setTimeout(() => setCaptionVisible(true), 800);
       }, 600);
     }, 8000);
-    return () => clearInterval(interval);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
   }, []);
 
   // Auto-play active video and pause inactive ones
@@ -95,7 +101,7 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
   return (
     <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* ========== SRI LANKAN CULTURAL VIDEO SHOWCASE ========== */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0" aria-hidden="true">
         {/* Animated gradient fallback */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0c1a0e] to-slate-950">
           <div className="absolute inset-0 bg-gradient-to-br from-saffron-900/30 via-transparent to-emerald-900/20 animate-gradient-x" style={{ animationDuration: '18s' }} />
@@ -111,10 +117,12 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
               activeVideo === i && anyVideoReady ? 'opacity-50' : 'opacity-0'
             }`}
             muted loop playsInline
+            preload={i === 0 ? "metadata" : "none"}
             poster="/images/hero-bg.jpg"
             onCanPlayThrough={() => handleVideoReady(i)}
             onLoadedData={() => handleVideoReady(i)}
-            aria-label={video.label}
+            tabIndex={-1}
+            aria-hidden="true"
           >
             <source src={video.src} type="video/mp4" />
           </video>

@@ -199,7 +199,7 @@ export default function Navbar({ level, xp, xpProgress, streak, darkMode, onTogg
         <div className={`absolute inset-0 bg-black/60 transition-opacity duration-500 ${showMobile ? 'opacity-100' : 'opacity-0'}`} onClick={() => setShowMobile(false)} />
 
         {/* Panel */}
-        <div className={`absolute right-0 top-0 bottom-0 w-[280px] sm:w-[320px] transition-transform duration-500 ease-out ${
+        <div className={`absolute right-0 top-0 bottom-0 w-[280px] sm:w-[320px] max-h-[100dvh] overflow-y-auto transition-transform duration-500 ease-out ${
           showMobile ? 'translate-x-0' : 'translate-x-full'
         } ${darkMode ? 'glass-dark' : 'bg-white/95 backdrop-blur-xl border-l border-slate-200/60'}`}>
           <div className="p-6 pt-20 flex flex-col h-full">

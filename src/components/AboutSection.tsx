@@ -1,12 +1,12 @@
 const FEATURES = [
-  { icon: '📖', title: 'Complete Alphabet', desc: 'Learn all 33 essential letters with pronunciation guides, audio playback, and visual breakdowns' },
-  { icon: '🎯', title: 'XP & Leveling', desc: 'Earn experience points, level up through 10+ levels, and unlock 14 achievement badges' },
+  { icon: '📖', title: 'Complete Alphabet', desc: 'Learn all 60 Sinhala letters (vowels, consonants & signs) with native audio playback and canvas drawing' },
+  { icon: '🎯', title: 'XP & Leveling', desc: 'Earn experience points, level up through 10+ ranks, and unlock 14 achievement badges' },
   { icon: '🃏', title: 'Word Match Game', desc: 'Memory-style matching game that reinforces vocabulary through fun, competitive play' },
-  { icon: '💬', title: 'Real Conversations', desc: '3 interactive dialogues for travel, dining, and daily life with step-by-step reveal' },
+  { icon: '💬', title: 'Real Conversations', desc: '6 interactive dialogues for travel, dining, shopping, and emergencies with step-by-step reveal' },
   { icon: '🧪', title: 'Smart Quizzes', desc: 'Bi-directional quizzes testing both Sinhala-to-English and English-to-Sinhala recall' },
   { icon: '🌙', title: 'Dark Mode', desc: 'Stunning dark glassmorphism UI with animated gradients that\'s beautiful day and night' },
   { icon: '🤖', title: 'AI Chatbot', desc: 'Ask anything about Sinhala in English — get instant translations, phrases, and cultural tips' },
-  { icon: '🎬', title: 'Cinematic Video', desc: 'Stunning ocean wave video hero with multi-layer particle effects and typewriter animation' },
+  { icon: '🎬', title: 'Cinematic Video', desc: 'Stunning cultural video showcase with multi-layer ambient lighting and typewriter animation' },
 ];
 
 const SKILLS = [

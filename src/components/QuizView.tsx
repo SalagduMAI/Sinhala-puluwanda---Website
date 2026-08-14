@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Lesson, QuizQuestion, generateQuiz } from '../data/lessons';
 
 interface QuizViewProps {
@@ -63,8 +63,10 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
 
   const currentQuestion = questions[currentIndex];
 
-  const handleAnswer = (index: number) => {
+  const handleAnswer = useCallback((index: number) => {
     if (hasAnsweredRef.current || selectedAnswer !== null) return;
+    if (!currentQuestion || index < 0 || index >= currentQuestion.options.length) return;
+
     hasAnsweredRef.current = true;
     setSelectedAnswer(index);
     const correct = index === currentQuestion.correctIndex;
@@ -80,9 +82,9 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
       setStreak(0);
       finalScoreRef.current = score;
     }
-  };
+  }, [currentQuestion, score, selectedAnswer]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (currentIndex + 1 >= questions.length) {
       setIsFinished(true);
       const finalScore = finalScoreRef.current;
@@ -92,10 +94,11 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
       setCurrentIndex(i => i + 1);
       setSelectedAnswer(null);
       setIsCorrect(null);
+      hasAnsweredRef.current = false;
     }
-  };
+  }, [currentIndex, onComplete, questions.length]);
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     setQuestions(generateQuiz(lesson.id));
     setCurrentIndex(0);
     setSelectedAnswer(null);
@@ -106,7 +109,48 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
     setShowConfetti(false);
     hasAnsweredRef.current = false;
     finalScoreRef.current = 0;
-  };
+  }, [lesson.id]);
+
+  // Quiz keyboard shortcuts (1-4, A-D, Enter)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      if (isFinished) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleRetry();
+        }
+        return;
+      }
+
+      if (selectedAnswer !== null) {
+        if (e.key === 'Enter' || e.code === 'Space') {
+          e.preventDefault();
+          handleNext();
+        }
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      if (key === '1' || key === 'a') {
+        e.preventDefault();
+        handleAnswer(0);
+      } else if (key === '2' || key === 'b') {
+        e.preventDefault();
+        handleAnswer(1);
+      } else if (key === '3' || key === 'c') {
+        e.preventDefault();
+        handleAnswer(2);
+      } else if (key === '4' || key === 'd') {
+        e.preventDefault();
+        handleAnswer(3);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleAnswer, handleNext, handleRetry, isFinished, selectedAnswer]);
 
   if (isFinished) {
     const percentage = Math.round((score / questions.length) * 100);

@@ -121,7 +121,17 @@ export default function PhraseBuilder({ darkMode, soundEnabled }: PhraseBuilderP
           {phraseData[activeCategory].phrases.map((phrase, i) => (
             <div
               key={`${activeCategory}-${i}`}
+              role="button"
+              tabIndex={0}
+              aria-expanded={revealedPhrases.has(i)}
+              aria-label={`Phrase: ${phrase.sinhala}. ${revealedPhrases.has(i) ? `Translation: ${phrase.english}` : 'Click to reveal English translation'}`}
               onClick={() => toggleReveal(i)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleReveal(i);
+                }
+              }}
               className={`animate-slide-up cursor-pointer rounded-2xl p-5 transition-all duration-300 ${
                 darkMode
                   ? 'bg-slate-900 border border-slate-800 hover:border-saffron-800/50'
@@ -143,7 +153,8 @@ export default function PhraseBuilder({ darkMode, soundEnabled }: PhraseBuilderP
                   {soundEnabled && isSupported && (
                     <button
                       onClick={(e) => { e.stopPropagation(); speak(phrase.sinhala, phrase.transliteration); }}
-                      className={`p-2 rounded-lg ${darkMode ? 'hover:bg-slate-800 text-slate-500' : 'hover:bg-slate-100 text-slate-400'}`}
+                      aria-label={`Listen to pronunciation of ${phrase.sinhala}`}
+                      className={`p-2 rounded-lg ${darkMode ? 'hover:bg-slate-800 text-slate-500 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-700'}`}
                     >
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" clipRule="evenodd" />

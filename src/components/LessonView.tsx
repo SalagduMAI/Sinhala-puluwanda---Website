@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Lesson, Word } from '../data/lessons';
 import { useSpeech } from '../hooks/useSpeech';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
@@ -15,7 +15,7 @@ interface LessonViewProps {
   onToggleStarWord: (lessonId: number, wordIndex: number) => void;
 }
 
-function WordCard({
+const WordCard = memo(function WordCard({
   word, index, isLearned, isStarred, darkMode, soundEnabled, onLearn, onSpeak, onToggleStar,
   isListening, accuracyScore, onStartListening
 }: {
@@ -111,8 +111,9 @@ function WordCard({
           </div>
         )}
 
+        {/* Card Front (Sinhala) / Back (English) */}
         {!flipped ? (
-          <div className="flex flex-col items-center justify-center flex-1 text-center">
+          <div className="flex flex-col items-center justify-center flex-1 text-center py-2">
             <span 
               onClick={(e) => { 
                 if (soundEnabled) {
@@ -120,6 +121,15 @@ function WordCard({
                   onSpeak(word.sinhala, word.transliteration); 
                 }
               }}
+              onKeyDown={(e) => {
+                if (soundEnabled && (e.key === 'Enter' || e.key === ' ')) {
+                  e.stopPropagation();
+                  onSpeak(word.sinhala, word.transliteration);
+                }
+              }}
+              role={soundEnabled ? "button" : undefined}
+              tabIndex={soundEnabled ? 0 : undefined}
+              aria-label={soundEnabled ? `Listen to pronunciation of ${word.sinhala}` : undefined}
               className={`sinhala-text text-3xl md:text-4xl font-bold mb-2 ${soundEnabled ? 'cursor-pointer hover:text-saffron-500 dark:hover:text-saffron-400 transition-colors' : ''} ${darkMode ? 'text-white' : 'text-slate-900'}`}
               lang="si"
               title={soundEnabled ? "Click to hear pronunciation" : undefined}
@@ -144,6 +154,15 @@ function WordCard({
                   onSpeak(word.sinhala, word.transliteration); 
                 }
               }}
+              onKeyDown={(e) => {
+                if (soundEnabled && (e.key === 'Enter' || e.key === ' ')) {
+                  e.stopPropagation();
+                  onSpeak(word.sinhala, word.transliteration);
+                }
+              }}
+              role={soundEnabled ? "button" : undefined}
+              tabIndex={soundEnabled ? 0 : undefined}
+              aria-label={soundEnabled ? `Listen to pronunciation of ${word.sinhala}` : undefined}
               className={`sinhala-text text-lg mb-1 ${soundEnabled ? 'cursor-pointer hover:text-saffron-500 dark:hover:text-saffron-400 transition-colors' : ''} ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}
               lang="si"
               title={soundEnabled ? "Click to hear pronunciation" : undefined}
@@ -172,7 +191,7 @@ function WordCard({
       </div>
     </div>
   );
-}
+});
 
 export default function LessonView({
   lesson, darkMode, soundEnabled, onBack, onStartQuiz, onWordLearned, learnedWords, starredWords, onToggleStarWord

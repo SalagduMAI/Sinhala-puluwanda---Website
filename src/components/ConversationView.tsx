@@ -83,7 +83,7 @@ export default function ConversationView({ darkMode, soundEnabled, onBack }: Con
         </div>
 
         {/* Chat bubbles */}
-        <div className="space-y-4 mb-8">
+        <div role="region" aria-label="Dialogue Transcript" className="space-y-4 mb-8">
           {convo.lines.map((line, i) => {
             const isRevealed = revealedLines.has(i);
             const isA = line.speaker === 'A';
@@ -135,11 +135,12 @@ export default function ConversationView({ darkMode, soundEnabled, onBack }: Con
                     </div>
                     {soundEnabled && isSupported && (
                       <button
-                        onClick={() => speak(line.sinhala)}
+                        onClick={() => speak(line.sinhala, line.transliteration)}
+                        aria-label={`Listen to speaker ${line.speaker}: ${line.sinhala}`}
                         className={`flex-shrink-0 p-1.5 rounded-lg transition-colors ${
                           isA
-                            ? darkMode ? 'hover:bg-slate-700 text-slate-500' : 'hover:bg-slate-100 text-slate-400'
-                            : 'hover:bg-white/20 text-white/70'
+                            ? darkMode ? 'hover:bg-slate-700 text-slate-500 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-700'
+                            : 'hover:bg-white/20 text-white/70 hover:text-white'
                         }`}
                       >
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

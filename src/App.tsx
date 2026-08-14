@@ -2,19 +2,21 @@ import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useGame } from './contexts/GameContext';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import AlphabetSection from './components/AlphabetSection';
 import LessonsSection from './components/LessonsSection';
 import PracticeSection from './components/PracticeSection';
-import PhraseBuilder from './components/PhraseBuilder';
 import AboutSection from './components/AboutSection';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
-import Chatbot from './components/Chatbot';
 import XPToast from './components/XPToast';
+import OnboardingModal from './components/OnboardingModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Lesson, lessons } from './data/lessons';
-import { GrammarSection } from './components/GrammarSection';
 
-// Lazy load heavy views
+// Lazy load heavy components and subviews
+const AlphabetSection = lazy(() => import('./components/AlphabetSection'));
+const PhraseBuilder = lazy(() => import('./components/PhraseBuilder'));
+const GrammarSection = lazy(() => import('./components/GrammarSection').then(m => ({ default: m.GrammarSection })));
+const Chatbot = lazy(() => import('./components/Chatbot'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const WordMatchGame = lazy(() => import('./components/WordMatchGame'));
 const ConversationView = lazy(() => import('./components/ConversationView'));
@@ -26,7 +28,7 @@ const FlashcardReview = lazy(() => import('./components/FlashcardReview'));
 type View = 'home' | 'lesson' | 'quiz' | 'dashboard' | 'match-game' | 'conversation' | 'writing-practice' | 'flashcards' | 'grammar';
 
 const LoadingFallback = () => (
-  <div className="min-h-screen flex items-center justify-center bg-slate-900/5 dark:bg-slate-950/20">
+  <div className="min-h-[50vh] flex items-center justify-center bg-slate-900/5 dark:bg-slate-950/20 py-16">
     <div className="flex flex-col items-center space-y-4">
       <div className="w-12 h-12 border-4 border-saffron-500 border-t-transparent rounded-full animate-spin"></div>
       <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">Loading section...</p>
@@ -203,6 +205,22 @@ export default function App() {
     }
   }, [view]);
 
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
+    try {
+      const done = localStorage.getItem('sinhala_onboarding_done');
+      return !done;
+    } catch {
+      return false;
+    }
+  });
+
+  const handleCloseOnboarding = () => {
+    setShowOnboarding(false);
+    try {
+      localStorage.setItem('sinhala_onboarding_done', 'true');
+    } catch {}
+  };
+
   const navProps = {
     level: state.level, xp: state.xp, xpProgress,
     streak: state.streak, darkMode,
@@ -218,7 +236,11 @@ export default function App() {
       onDone={handleToastDone}
     />
   ) : null;
-  const chatbotEl = <Chatbot darkMode={darkMode} isOpen={chatOpen} onClose={() => setChatOpen(false)} />;
+  const chatbotEl = (
+    <Suspense fallback={null}>
+      <Chatbot darkMode={darkMode} isOpen={chatOpen} onClose={() => setChatOpen(false)} />
+    </Suspense>
+  );
 
   // Floating chat button (visible on all views, subject to Level 2 lock check)
   const chatFab = !chatOpen && (
@@ -227,7 +249,7 @@ export default function App() {
         if (state.level >= 2) {
           setChatOpen(true);
         } else {
-          // Don't open chat - button visual state already indicates locked
+          showToast('🔒 Reach Level 2 to unlock AI Sinhala Helper!', 0);
         }
       }}
       className="fixed bottom-5 right-5 z-[80] w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-saffron-500 to-saffron-600 rounded-2xl shadow-xl shadow-saffron-500/30 hover:shadow-saffron-500/50 flex items-center justify-center text-2xl sm:text-3xl hover:scale-110 active:scale-95 transition-all duration-300 group"
@@ -246,105 +268,123 @@ export default function App() {
     </button>
   );
 
-  // ===== Sub-views rendering with Suspense =====
+  // ===== Sub-views rendering with ErrorBoundary and Suspense =====
   const renderSubView = () => {
     switch (view) {
       case 'dashboard':
         return (
-          <Suspense fallback={<LoadingFallback />}>
-            <Dashboard
-              darkMode={darkMode} xp={state.xp} level={state.level}
-              streak={state.streak} xpProgress={xpProgress}
-              totalWordsLearned={totalWordsLearned} achievements={state.achievements}
-              totalQuizzes={state.totalQuizzesTaken} perfectScores={state.perfectScores}
-              wordsLearned={state.wordsLearned}
-              dailyXp={state.dailyXpEarned} dailyGoal={state.dailyGoal}
-              starredWords={state.starredWords || {}} srsData={state.srsData || {}}
-              avatar={state.avatar || 'novice'}
-              onBack={() => { window.location.hash = '#/'; window.scrollTo(0, 0); }}
-              onToggleStarWord={toggleStarWord}
-              onChangeAvatar={changeAvatar}
-              onImportState={importProgressState}
-            />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
+              <Dashboard
+                darkMode={darkMode} xp={state.xp} level={state.level}
+                streak={state.streak} xpProgress={xpProgress}
+                totalWordsLearned={totalWordsLearned} achievements={state.achievements}
+                totalQuizzes={state.totalQuizzesTaken} perfectScores={state.perfectScores}
+                wordsLearned={state.wordsLearned}
+                dailyXp={state.dailyXpEarned} dailyGoal={state.dailyGoal}
+                starredWords={state.starredWords || {}} srsData={state.srsData || {}}
+                avatar={state.avatar || 'novice'}
+                onBack={() => { window.location.hash = '#/'; window.scrollTo(0, 0); }}
+                onToggleStarWord={toggleStarWord}
+                onChangeAvatar={changeAvatar}
+                onImportState={importProgressState}
+              />
+            </Suspense>
+          </ErrorBoundary>
         );
 
       case 'match-game':
         return (
-          <Suspense fallback={<LoadingFallback />}>
-            <WordMatchGame darkMode={darkMode}
-              onComplete={() => { unlockMatchAchievement(); showToast('Match game won! 🃏', 30); }}
-              onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
-            />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
+              <WordMatchGame darkMode={darkMode}
+                onComplete={() => { unlockMatchAchievement(); showToast('Match game won! 🃏', 30); }}
+                onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
+              />
+            </Suspense>
+          </ErrorBoundary>
         );
 
       case 'conversation':
         return (
-          <Suspense fallback={<LoadingFallback />}>
-            <ConversationView darkMode={darkMode} soundEnabled={state.soundEnabled}
-              onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
-            />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
+              <ConversationView darkMode={darkMode} soundEnabled={state.soundEnabled}
+                onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
+              />
+            </Suspense>
+          </ErrorBoundary>
         );
 
       case 'lesson':
         if (!selectedLesson) return <LoadingFallback />;
         return (
-          <Suspense fallback={<LoadingFallback />}>
-            <LessonView
-              lesson={selectedLesson} darkMode={darkMode} soundEnabled={state.soundEnabled}
-              onBack={handleBack} onStartQuiz={handleStartQuiz}
-              onWordLearned={handleWordLearned}
-              learnedWords={state.wordsLearned[selectedLesson.id] || []}
-              starredWords={state.starredWords || {}}
-              onToggleStarWord={toggleStarWord}
-            />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
+              <LessonView
+                lesson={selectedLesson} darkMode={darkMode} soundEnabled={state.soundEnabled}
+                onBack={handleBack} onStartQuiz={handleStartQuiz}
+                onWordLearned={handleWordLearned}
+                learnedWords={state.wordsLearned[selectedLesson.id] || []}
+                starredWords={state.starredWords || {}}
+                onToggleStarWord={toggleStarWord}
+              />
+            </Suspense>
+          </ErrorBoundary>
         );
 
       case 'quiz':
         if (!selectedLesson) return <LoadingFallback />;
         return (
-          <Suspense fallback={<LoadingFallback />}>
-            <QuizView lesson={selectedLesson} darkMode={darkMode}
-              onBack={() => { window.location.hash = `#/lesson/${selectedLesson.id}`; window.scrollTo(0, 0); }}
-              onComplete={handleQuizComplete}
-            />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
+              <QuizView lesson={selectedLesson} darkMode={darkMode}
+                onBack={() => { window.location.hash = `#/lesson/${selectedLesson.id}`; window.scrollTo(0, 0); }}
+                onComplete={handleQuizComplete}
+              />
+            </Suspense>
+          </ErrorBoundary>
         );
 
       case 'writing-practice':
         return (
-          <Suspense fallback={<LoadingFallback />}>
-            <WritingPractice
-              darkMode={darkMode}
-              soundEnabled={state.soundEnabled}
-              onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
-              onAwardXP={addXP}
-            />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
+              <WritingPractice
+                darkMode={darkMode}
+                soundEnabled={state.soundEnabled}
+                onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
+                onAwardXP={addXP}
+              />
+            </Suspense>
+          </ErrorBoundary>
         );
 
       case 'flashcards':
         return (
-          <Suspense fallback={<LoadingFallback />}>
-            <FlashcardReview
-              darkMode={darkMode}
-              soundEnabled={state.soundEnabled}
-              state={state}
-              onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
-              onReviewWord={reviewSRSWord}
-              onAwardXP={addXP}
-            />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
+              <FlashcardReview
+                darkMode={darkMode}
+                soundEnabled={state.soundEnabled}
+                state={state}
+                onBack={() => { setScrollToSection('practice'); window.location.hash = '#/'; }}
+                onReviewWord={reviewSRSWord}
+                onAwardXP={addXP}
+              />
+            </Suspense>
+          </ErrorBoundary>
         );
 
       case 'grammar':
         return (
-          <div className="pt-20 pb-12">
-            <GrammarSection onAddXP={addXP} />
-          </div>
+          <ErrorBoundary>
+            <div className="pt-20 pb-12">
+              <Suspense fallback={<LoadingFallback />}>
+                <GrammarSection onAddXP={addXP} />
+              </Suspense>
+            </div>
+          </ErrorBoundary>
         );
 
       case 'home':
@@ -352,7 +392,9 @@ export default function App() {
         return (
           <>
             <Hero onStart={handleStart} totalWords={totalWordsLearned} level={state.level} streak={state.streak} />
-            <AlphabetSection darkMode={darkMode} soundEnabled={state.soundEnabled} />
+            <Suspense fallback={<LoadingFallback />}>
+              <AlphabetSection darkMode={darkMode} soundEnabled={state.soundEnabled} />
+            </Suspense>
             <LessonsSection onSelectLesson={handleSelectLesson} progress={state.wordsLearned} darkMode={darkMode} />
             <PracticeSection darkMode={darkMode} level={state.level}
               onOpenGame={() => { window.location.hash = '#/match-game'; window.scrollTo(0, 0); }}
@@ -363,11 +405,13 @@ export default function App() {
                 if (state.level >= 2) {
                   setChatOpen(true);
                 } else {
-                  // Don't open chat - button visual state already indicates locked
+                  showToast('🔒 Reach Level 2 to unlock AI Sinhala Helper!', 0);
                 }
               }}
             />
-            <PhraseBuilder darkMode={darkMode} soundEnabled={state.soundEnabled} />
+            <Suspense fallback={<LoadingFallback />}>
+              <PhraseBuilder darkMode={darkMode} soundEnabled={state.soundEnabled} />
+            </Suspense>
             <AboutSection darkMode={darkMode} />
             <ContactSection darkMode={darkMode} />
           </>
@@ -385,6 +429,7 @@ export default function App() {
       {toastEl}
       {chatFab}
       {chatbotEl}
+      {showOnboarding && <OnboardingModal isOpen={showOnboarding} onClose={handleCloseOnboarding} />}
     </div>
   );
 }

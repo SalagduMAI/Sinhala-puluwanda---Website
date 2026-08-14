@@ -13,6 +13,9 @@ export default function ContactSection({ darkMode }: ContactSectionProps) {
   
   const submitTimeoutRef = useRef<number | null>(null);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   useEffect(() => {
     return () => {
       if (submitTimeoutRef.current !== null) {
@@ -23,6 +26,10 @@ export default function ContactSection({ darkMode }: ContactSectionProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
 
     try {
       const response = await fetch(FORMSPREE_ENDPOINT, {
@@ -46,10 +53,12 @@ export default function ContactSection({ darkMode }: ContactSectionProps) {
         submitTimeoutRef.current = window.setTimeout(() => setSubmitted(false), 4000);
         setFormData({ name: '', email: '', message: '' });
       } else {
-        alert("Oops! There was a problem submitting your form");
+        setErrorMessage("Oops! There was a problem submitting your form. Please try again.");
       }
     } catch (error) {
-      alert("Error sending message. Please try again later.");
+      setErrorMessage("Network error sending message. Please check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -68,45 +77,54 @@ export default function ContactSection({ darkMode }: ContactSectionProps) {
             ✉️ Get In Touch
           </span>
           <h2 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-4 font-space tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-            Contact <span className="text-saffron-500">Us</span>
+            Have Questions or Feedback?
           </h2>
-          <p className={`text-base sm:text-lg max-w-xl mx-auto ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            Have feedback, suggestions, or just want to say <span className="sinhala-text text-saffron-500 font-medium" lang="si">ආයුබෝවන්</span>?
-            We'd love to hear from you!
+          <p className={`text-base sm:text-lg max-w-xl mx-auto ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            We'd love to hear from you. Send us a message and we'll get back to you as soon as possible.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-5 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12">
           {/* Form */}
           <div className="lg:col-span-3">
-            <div className={`rounded-3xl p-6 sm:p-8 ${darkMode ? 'glass-dark' : 'glass-card'}`}>
+            <div className={`rounded-3xl p-6 sm:p-8 md:p-10 ${darkMode ? 'glass-dark' : 'glass-card'}`}>
               {submitted ? (
-                <div className="text-center py-12 animate-scale-in">
-                  <span className="text-6xl block mb-4">🎉</span>
-                  <h3 className={`text-2xl font-bold mb-2 font-space ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                    <span className="sinhala-text" lang="si">ස්තූතියි!</span> Thank you!
+                <div className="text-center py-12 space-y-4 animate-scale-in">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto text-3xl">
+                    ✓
+                  </div>
+                  <h3 className={`text-2xl font-bold font-space ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                    Message Sent!
                   </h3>
-                  <p className={`${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Your message has been received. We'll get back to you soon.</p>
+                  <p className={`text-sm max-w-sm mx-auto ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Thank you for reaching out. We'll get back to you shortly!
+                  </p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
-                    <div>
-                      <label htmlFor="contact-name" className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Name
-                      </label>
-                      <input id="contact-name" type="text" required placeholder="Your name" value={formData.name}
-                        onChange={e => setFormData(d => ({ ...d, name: e.target.value }))}
-                        className={inputStyles} />
+                  {errorMessage && (
+                    <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-sm flex items-center gap-2 animate-shake">
+                      <span>⚠️</span>
+                      <span>{errorMessage}</span>
                     </div>
-                    <div>
-                      <label htmlFor="contact-email" className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Email
-                      </label>
-                      <input id="contact-email" type="email" required placeholder="you@example.com" value={formData.email}
-                        onChange={e => setFormData(d => ({ ...d, email: e.target.value }))}
-                        className={inputStyles} />
-                    </div>
+                  )}
+                  <div>
+                    <label htmlFor="contact-name" className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Your Name
+                    </label>
+                    <input id="contact-name" type="text" required placeholder="Amantha Salgadu"
+                      value={formData.name}
+                      onChange={e => setFormData(d => ({ ...d, name: e.target.value }))}
+                      className={inputStyles} />
+                  </div>
+                  <div>
+                    <label htmlFor="contact-email" className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Email Address
+                    </label>
+                    <input id="contact-email" type="email" required placeholder="you@example.com"
+                      value={formData.email}
+                      onChange={e => setFormData(d => ({ ...d, email: e.target.value }))}
+                      className={inputStyles} />
                   </div>
                   <div>
                     <label htmlFor="contact-message" className={`block text-xs font-semibold uppercase tracking-wider mb-2 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -118,8 +136,16 @@ export default function ContactSection({ darkMode }: ContactSectionProps) {
                       className={`${inputStyles} resize-none`} />
                   </div>
                   <button type="submit"
-                    className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold rounded-xl shadow-lg shadow-saffron-500/20 hover:shadow-saffron-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 text-sm">
-                    Send Message 🚀
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold rounded-xl shadow-lg shadow-saffron-500/20 hover:shadow-saffron-500/30 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm flex items-center justify-center gap-2">
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Sending...</span>
+                      </>
+                    ) : (
+                      <span>Send Message 🚀</span>
+                    )}
                   </button>
                 </form>
               )}

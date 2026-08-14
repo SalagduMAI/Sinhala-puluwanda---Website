@@ -79,6 +79,9 @@ export default function Dashboard({
     return count;
   }, [wordsLearned, srsData]);
 
+  // Memoize leaderboard ranking
+  const leaderboard = useMemo(() => getLeaderboard(xp, level), [xp, level]);
+
   // Flatten starred words list
   const starredList = useMemo(() => {
     const list: Array<{ lessonId: number; wordIdx: number; sinhala: string; english: string; romanized: string }> = [];
@@ -272,7 +275,7 @@ export default function Dashboard({
                 </p>
 
                 <div className="space-y-3">
-                  {getLeaderboard(xp, level).map((item, idx) => {
+                  {leaderboard.map((item, idx) => {
                     const isUser = 'isUser' in item && item.isUser;
                     const itemXP = isUser ? xp : item.xp;
                     const itemLevel = isUser ? level : item.level;

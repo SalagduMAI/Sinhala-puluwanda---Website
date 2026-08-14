@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { GRAMMAR_LESSONS } from '../data/grammar';
 import { useSpeech } from '../hooks/useSpeech';
 import { useTranslation } from '../i18n/useTranslation';
+import { useGame } from '../contexts/GameContext';
 
 interface GrammarSectionProps {
   onAddXP?: (xp: number, reason?: string) => void;
@@ -10,7 +11,8 @@ interface GrammarSectionProps {
 export const GrammarSection: React.FC<GrammarSectionProps> = ({ onAddXP }) => {
   const { speak } = useSpeech();
   const { t } = useTranslation();
-  const [activeLessonId, setActiveLessonId] = useState<string>(GRAMMAR_LESSONS[0].id);
+  const { completeGrammarQuiz, state } = useGame();
+  const [activeLessonId, setActiveLessonId] = useState<string>(GRAMMAR_LESSONS[0]?.id || 'sov-structure');
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [submittedQuizzes, setSubmittedQuizzes] = useState<Record<string, boolean>>({});
 
@@ -24,7 +26,8 @@ export const GrammarSection: React.FC<GrammarSectionProps> = ({ onAddXP }) => {
   const handleCheckQuiz = (quizId: string, correctIndex: number) => {
     setSubmittedQuizzes((prev) => ({ ...prev, [quizId]: true }));
     if (selectedAnswers[quizId] === correctIndex) {
-      if (onAddXP) {
+      const awarded = completeGrammarQuiz(quizId);
+      if (awarded && onAddXP) {
         onAddXP(15, 'Grammar Quiz Correct Answer!');
       }
     }
@@ -125,8 +128,8 @@ export const GrammarSection: React.FC<GrammarSectionProps> = ({ onAddXP }) => {
                   <button
                     onClick={() => speak(eg.sinhala, eg.transliteration)}
                     className="p-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white transition-all duration-200 shadow-md shadow-emerald-500/20 shrink-0"
-                    title="Pronounce Sentence"
-                    aria-label="Pronounce sentence"
+                    title={`Pronounce: ${eg.sinhala}`}
+                    aria-label={`Pronounce example sentence: ${eg.sinhala}`}
                   >
                     🔊
                   </button>
@@ -149,9 +152,18 @@ export const GrammarSection: React.FC<GrammarSectionProps> = ({ onAddXP }) => {
                 const selected = selectedAnswers[quiz.id];
                 const isSubmitted = submittedQuizzes[quiz.id];
                 const isCorrect = selected === quiz.correctIndex;
+                const isAlreadyCompleted = (state.completedGrammarQuizzes || []).includes(quiz.id);
 
                 return (
                   <div key={quiz.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-slate-400">Quiz</span>
+                      {isAlreadyCompleted && (
+                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                          ✓ Completed (+15 XP)
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm font-semibold text-slate-900 dark:text-white mb-3">
                       {quiz.question}
                     </p>

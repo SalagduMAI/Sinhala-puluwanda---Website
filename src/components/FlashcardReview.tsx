@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { lessons } from '../data/lessons';
 import { useSpeech } from '../hooks/useSpeech';
 
@@ -89,13 +89,15 @@ export default function FlashcardReview({
   }, [sessionStarted, activePool]);
 
   const currentCard = sessionStarted ? poolSnapshotRef.current[currentIndex] : undefined;
+  const isTransitioningRef = useRef(false);
 
-  const handleFlip = () => {
+  const handleFlip = useCallback(() => {
     setIsFlipped(prev => !prev);
-  };
+  }, []);
 
-  const handleRate = (rating: number) => {
-    if (!currentCard) return;
+  const handleRate = useCallback((rating: number) => {
+    if (!currentCard || isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
 
     // Call state updater for SM-2
     onReviewWord(currentCard.lessonId, currentCard.wordIdx, rating);
@@ -117,15 +119,49 @@ export default function FlashcardReview({
         // End of pool reached
         setCurrentIndex(poolSnapshotRef.current.length);
       }
+      isTransitioningRef.current = false;
     }, 300);
-  };
+  }, [currentCard, currentIndex, onAwardXP, onReviewWord]);
 
-  const handlePlaySound = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card from flipping when clicking sound button
+  const handlePlaySound = useCallback((e?: React.SyntheticEvent) => {
+    if (e) e.stopPropagation();
     if (currentCard && isSupported) {
-      speak(currentCard.sinhala);
+      speak(currentCard.sinhala, currentCard.romanized);
     }
-  };
+  }, [currentCard, isSupported, speak]);
+
+  // Global keyboard shortcuts for flashcards
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handleFlip();
+      } else if (e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        handlePlaySound();
+      } else if (isFlipped) {
+        if (e.key === '1') {
+          e.preventDefault();
+          handleRate(1);
+        } else if (e.key === '2') {
+          e.preventDefault();
+          handleRate(2);
+        } else if (e.key === '3') {
+          e.preventDefault();
+          handleRate(3);
+        } else if (e.key === '4') {
+          e.preventDefault();
+          handleRate(4);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleFlip, handlePlaySound, handleRate, isFlipped]);
 
   const resetSession = () => {
     startSession(activePool);

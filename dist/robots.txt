@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sinhala-puluwanda.vercel.app/sitemap.xml

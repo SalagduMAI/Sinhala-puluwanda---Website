@@ -42,6 +42,7 @@ export interface GameState {
   starredWords: Record<number, number[]>;
   srsData: Record<string, SRSInfo>;
   avatar: string;
+  completedGrammarQuizzes: string[];
 }
 
 const DEFAULT_STATE: GameState = {
@@ -62,13 +63,14 @@ const DEFAULT_STATE: GameState = {
   starredWords: {},
   srsData: {},
   avatar: 'novice',
+  completedGrammarQuizzes: [],
 };
 
 export const ALL_ACHIEVEMENTS: Achievement[] = [
   { id: 'first_word', title: 'First Step', titleSinhala: 'පළමු පියවර', description: 'Learn your first word', icon: '🌱' },
   { id: 'ten_words', title: 'Word Collector', titleSinhala: 'වචන එකතුකරු', description: 'Learn 10 words', icon: '📚' },
   { id: 'thirty_words', title: 'Vocabulary Master', titleSinhala: 'වචන මාස්ටර්', description: 'Learn 30 words', icon: '🎓' },
-  { id: 'all_words', title: 'Word Wizard', titleSinhala: 'වචන මායාකාරයා', description: 'Learn all 144 words', icon: '🧙' },
+  { id: 'all_words', title: 'Word Wizard', titleSinhala: 'වචන මායාකාරයා', description: 'Learn all words in course', icon: '🧙' },
   { id: 'first_quiz', title: 'Quiz Starter', titleSinhala: 'ප්‍රශ්නාවලිය', description: 'Complete your first quiz', icon: '🧪' },
   { id: 'perfect_quiz', title: 'Perfectionist', titleSinhala: 'පරිපූර්ණ', description: 'Get a perfect quiz score', icon: '💯' },
   { id: 'five_quizzes', title: 'Quiz Champion', titleSinhala: 'ප්‍රශ්න ශූරයා', description: 'Complete 5 quizzes', icon: '🏆' },
@@ -77,7 +79,7 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
   { id: 'three_streak', title: 'On Fire', titleSinhala: 'ගින්නෙන්', description: '3-day learning streak', icon: '🔥' },
   { id: 'seven_streak', title: 'Dedicated Learner', titleSinhala: 'කැපවූ ඉගෙනුම්කරු', description: '7-day learning streak', icon: '💎' },
   { id: 'daily_goal', title: 'Goal Crusher', titleSinhala: 'ඉලක්ක බිඳිනා', description: 'Complete your daily XP goal', icon: '🎯' },
-  { id: 'all_lessons', title: 'Course Complete', titleSinhala: 'පාඨමාලාව සම්පූර්ණයි', description: 'Study all 12 lessons', icon: '🎊' },
+  { id: 'all_lessons', title: 'Course Complete', titleSinhala: 'පාඨමාලාව සම්පූර්ණයි', description: 'Study all lessons', icon: '🎊' },
   { id: 'match_master', title: 'Match Master', titleSinhala: 'ගැලපුම් මාස්ටර්', description: 'Win the word match game', icon: '🃏' },
 ];
 
@@ -87,6 +89,7 @@ export const XP_QUIZ_CORRECT = 15;
 export const XP_QUIZ_PERFECT = 50;
 export const XP_MATCH_WIN = 30;
 export const XP_SRS_REVIEW = 15;
+export const XP_GRAMMAR_QUIZ = 15;
 
 export function getLocalDateString() {
   const d = new Date();
@@ -94,6 +97,24 @@ export function getLocalDateString() {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+export function getDaysDifference(d1: string, d2: string): number {
+  if (!d1 || !d2) return 0;
+  const p1 = d1.split('-').map(Number);
+  const p2 = d2.split('-').map(Number);
+  if (p1.length !== 3 || p2.length !== 3) return 0;
+  const t1 = Date.UTC(p1[0], p1[1] - 1, p1[2]);
+  const t2 = Date.UTC(p2[0], p2[1] - 1, p2[2]);
+  return Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
+}
+
+export function calculateNewStreak(lastActiveDate: string, today: string, currentStreak: number): number {
+  if (!lastActiveDate) return 1;
+  if (lastActiveDate === today) return currentStreak;
+  const diff = getDaysDifference(lastActiveDate, today);
+  if (diff === 1) return currentStreak + 1;
+  return 1;
 }
 
 export function useGameState() {
@@ -109,17 +130,14 @@ export function useGameState() {
     if (!s.starredWords) s.starredWords = {};
     if (!s.srsData) s.srsData = {};
     if (!s.avatar) s.avatar = 'novice';
+    if (!s.completedGrammarQuizzes) s.completedGrammarQuizzes = [];
 
     if (s.dailyGoalDate !== today) {
       s.dailyXpEarned = 0;
       s.dailyGoalDate = today;
     }
     if (s.lastActiveDate && s.lastActiveDate !== today) {
-      const lastParts = s.lastActiveDate.split('-').map(Number);
-      const todayParts = today.split('-').map(Number);
-      const lastDays = lastParts[0] * 365 + lastParts[1] * 31 + lastParts[2];
-      const todayDays = todayParts[0] * 365 + todayParts[1] * 31 + todayParts[2];
-      const diff = todayDays - lastDays;
+      const diff = getDaysDifference(s.lastActiveDate, today);
       if (diff > 1) {
         s.streak = 0;
       }
@@ -136,7 +154,8 @@ export function useGameState() {
       state.achievements.length !== checkedState.achievements.length ||
       !state.starredWords ||
       !state.srsData ||
-      !state.avatar
+      !state.avatar ||
+      !state.completedGrammarQuizzes
     ) {
       setState(checkedState);
     }
@@ -147,8 +166,7 @@ export function useGameState() {
       const newXp = prev.xp + amount;
       const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
       const newDailyXp = (prev.dailyGoalDate === today ? prev.dailyXpEarned : 0) + amount;
-      const isNewDay = prev.lastActiveDate !== today;
-      const newStreak = isNewDay ? prev.streak + 1 : prev.streak;
+      const newStreak = calculateNewStreak(prev.lastActiveDate, today, prev.streak);
 
       const newAchievements = [...prev.achievements];
       // Check daily goal
@@ -188,8 +206,7 @@ export function useGameState() {
       const newXp = prev.xp + xpAmount;
       const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
       const newDailyXp = (prev.dailyGoalDate === today ? prev.dailyXpEarned : 0) + xpAmount;
-      const isNewDay = prev.lastActiveDate !== today;
-      const newStreak = isNewDay ? prev.streak + 1 : prev.streak;
+      const newStreak = calculateNewStreak(prev.lastActiveDate, today, prev.streak);
 
       const newAchievements = [...prev.achievements];
       if (totalWords >= 1 && !newAchievements.includes('first_word')) newAchievements.push('first_word');
@@ -246,8 +263,7 @@ export function useGameState() {
       const newXp = prev.xp + xpAmount;
       const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
       const newDailyXp = (prev.dailyGoalDate === today ? prev.dailyXpEarned : 0) + xpAmount;
-      const isNewDay = prev.lastActiveDate !== today;
-      const newStreak = isNewDay ? prev.streak + 1 : prev.streak;
+      const newStreak = calculateNewStreak(prev.lastActiveDate, today, prev.streak);
 
       const newAchievements = [...prev.achievements];
       if (!newAchievements.includes('first_quiz')) newAchievements.push('first_quiz');
@@ -289,8 +305,7 @@ export function useGameState() {
       const newXp = prev.xp + xpAmount;
       const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
       const newDailyXp = (prev.dailyGoalDate === today ? prev.dailyXpEarned : 0) + xpAmount;
-      const isNewDay = prev.lastActiveDate !== today;
-      const newStreak = isNewDay ? prev.streak + 1 : prev.streak;
+      const newStreak = calculateNewStreak(prev.lastActiveDate, today, prev.streak);
 
       const newAchievements = [...prev.achievements];
       if (!isMatchMaster) {
@@ -393,8 +408,7 @@ export function useGameState() {
       const newXp = prev.xp + xpAmount;
       const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
       const newDailyXp = (prev.dailyGoalDate === today ? prev.dailyXpEarned : 0) + xpAmount;
-      const isNewDay = prev.lastActiveDate !== today;
-      const newStreak = isNewDay ? prev.streak + 1 : prev.streak;
+      const newStreak = calculateNewStreak(prev.lastActiveDate, today, prev.streak);
 
       const newAchievements = [...prev.achievements];
       if (newDailyXp >= prev.dailyGoal && !newAchievements.includes('daily_goal')) {
@@ -417,47 +431,76 @@ export function useGameState() {
     });
   }, [setState, today]);
 
-  // Set avatar badge selection
-  const changeAvatar = useCallback((avatarId: string) => {
-    setState(prev => ({
-      ...prev,
-      avatar: avatarId
-    }));
+  // Complete grammar quiz (guarantees XP is only awarded once per quiz ID)
+  const completeGrammarQuiz = useCallback((quizId: string): boolean => {
+    let wasAwarded = false;
+    setState(prev => {
+      const alreadyCompleted = (prev.completedGrammarQuizzes || []).includes(quizId);
+      if (alreadyCompleted) return prev;
+
+      wasAwarded = true;
+      const xpAmount = XP_GRAMMAR_QUIZ;
+      const newXp = prev.xp + xpAmount;
+      const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
+      const newDailyXp = (prev.dailyGoalDate === today ? prev.dailyXpEarned : 0) + xpAmount;
+      const newStreak = calculateNewStreak(prev.lastActiveDate, today, prev.streak);
+      const newCompleted = [...(prev.completedGrammarQuizzes || []), quizId];
+
+      const newAchievements = [...prev.achievements];
+      if (newDailyXp >= prev.dailyGoal && !newAchievements.includes('daily_goal')) {
+        newAchievements.push('daily_goal');
+      }
+      if (newLevel >= 5 && !newAchievements.includes('level_5')) newAchievements.push('level_5');
+      if (newLevel >= 10 && !newAchievements.includes('level_10')) newAchievements.push('level_10');
+
+      return {
+        ...prev,
+        completedGrammarQuizzes: newCompleted,
+        xp: newXp,
+        level: newLevel,
+        streak: newStreak,
+        lastActiveDate: today,
+        dailyXpEarned: newDailyXp,
+        dailyGoalDate: today,
+        achievements: newAchievements,
+      };
+    });
+    return wasAwarded;
+  }, [setState, today]);
+
+  const changeAvatar = useCallback((newAvatar: string) => {
+    setState(prev => ({ ...prev, avatar: newAvatar }));
   }, [setState]);
 
-  // Safe validated import progress state
-  const importProgressState = useCallback((imported: any): boolean => {
-    try {
-      if (!imported || typeof imported !== 'object') return false;
+  const importProgressState = useCallback((imported: Partial<GameState>): boolean => {
+    const requiredKeys = ['xp', 'level', 'streak', 'wordsLearned'];
+    const isValid = requiredKeys.every(k => k in imported);
+    if (!isValid) return false;
 
-      // Schema checks
-      const hasXP = typeof imported.xp === 'number';
-      const hasLevel = typeof imported.level === 'number';
-      const hasStreak = typeof imported.streak === 'number';
-      const hasWords = imported.wordsLearned && typeof imported.wordsLearned === 'object';
-
-      if (!hasXP || !hasLevel || !hasStreak || !hasWords) {
-        return false;
-      }
-
-      const mergedState: GameState = {
-        ...DEFAULT_STATE,
-        ...imported,
-        xp: Number(imported.xp),
-        level: Number(imported.level),
-        streak: Number(imported.streak),
-      };
-
-      setState(mergedState);
-      return true;
-    } catch (e) {
-      console.error('Import validation failed:', e);
-      return false;
-    }
+    setState(prev => ({
+      ...prev,
+      ...imported,
+      wordsLearned: imported.wordsLearned || prev.wordsLearned,
+      starredWords: imported.starredWords || prev.starredWords,
+      srsData: imported.srsData || prev.srsData,
+      completedGrammarQuizzes: imported.completedGrammarQuizzes || prev.completedGrammarQuizzes,
+      achievements: Array.from(new Set([...(prev.achievements || []), ...(imported.achievements || [])]))
+    }));
+    return true;
   }, [setState]);
 
   const toggleDarkMode = useCallback(() => {
-    setState(prev => ({ ...prev, darkMode: !prev.darkMode }));
+    setState(prev => {
+      const nextDark = !prev.darkMode;
+      if (typeof document !== 'undefined') {
+        if (nextDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+      return { ...prev, darkMode: nextDark };
+    });
   }, [setState]);
 
   const toggleSound = useCallback(() => {
@@ -465,13 +508,14 @@ export function useGameState() {
   }, [setState]);
 
   const totalWordsLearned = useMemo(() => {
-    return Object.values(checkedState.wordsLearned).reduce((sum, arr) => sum + arr.length, 0);
+    return Object.values(checkedState.wordsLearned || {}).reduce((sum, words) => sum + (words?.length || 0), 0);
   }, [checkedState.wordsLearned]);
 
   const xpProgress = useMemo(() => {
-    const xpForCurrentLevel = checkedState.xp % XP_PER_LEVEL;
-    return (xpForCurrentLevel / XP_PER_LEVEL) * 100;
-  }, [checkedState.xp]);
+    const currentLevelXP = (checkedState.level - 1) * XP_PER_LEVEL;
+    const progressXP = checkedState.xp - currentLevelXP;
+    return Math.min(100, Math.max(0, Math.round((progressXP / XP_PER_LEVEL) * 100)));
+  }, [checkedState.level, checkedState.xp]);
 
   return {
     state: checkedState,
@@ -481,6 +525,7 @@ export function useGameState() {
     unlockMatchAchievement,
     toggleStarWord,
     reviewSRSWord,
+    completeGrammarQuiz,
     changeAvatar,
     importProgressState,
     toggleDarkMode,

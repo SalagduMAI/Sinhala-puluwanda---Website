@@ -119,7 +119,7 @@ export default function Footer({ darkMode, onNavigate }: FooterProps) {
                 className="text-slate-500 hover:text-saffron-400 transition-colors text-xs flex items-center gap-1.5 group">
                 Back to top
                 <svg className="w-3 h-3 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l-7 7m-7-7v18" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
                 </svg>
               </button>
             </div>

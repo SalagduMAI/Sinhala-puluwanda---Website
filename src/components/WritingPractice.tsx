@@ -22,25 +22,27 @@ interface Stroke {
 
 export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwardXP }: WritingPracticeProps) {
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [brushColor, setBrushColor] = useState('#f59e0b'); // Default: Saffron
-  const [brushSize, setBrushSize] = useState(8);
-  const [showGuide, setShowGuide] = useState(true);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
+  const [brushSize, setBrushSize] = useState(8);
+  const [brushColor, setBrushColor] = useState('#f59e0b');
   const [hasPracticed, setHasPracticed] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const currentStrokeRef = useRef<Stroke | null>(null);
   const { speak, isSupported } = useSpeech();
 
   const letter = alphabet[selectedIdx];
 
-  // Colors list
+  // Dynamic colors list adapting to darkMode
+  const defaultColor = darkMode ? '#f8fafc' : '#0f172a';
   const colors = [
     { value: '#f59e0b', name: 'Saffron', bgClass: 'bg-amber-500' },
     { value: '#10b981', name: 'Emerald', bgClass: 'bg-emerald-500' },
     { value: '#3b82f6', name: 'Blue', bgClass: 'bg-blue-500' },
     { value: '#f43f5e', name: 'Rose', bgClass: 'bg-rose-500' },
-    { value: darkMode ? '#f8fafc' : '#0f172a', name: 'Default', bgClass: darkMode ? 'bg-slate-100' : 'bg-slate-900' }
+    { value: defaultColor, name: 'Default', bgClass: darkMode ? 'bg-slate-100' : 'bg-slate-900' }
   ];
 
   // Redraw all strokes on canvas
@@ -99,6 +101,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
   const handleLetterChange = (idx: number) => {
     setSelectedIdx(idx);
     setStrokes([]);
+    currentStrokeRef.current = null;
     setHasPracticed(false);
     if (soundEnabled && isSupported) {
       speak(alphabet[idx].letter);
@@ -132,41 +135,69 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     e.preventDefault();
     setIsDrawing(true);
     const coord = getCoordinates(e);
+    const activeColor = brushColor === '#f8fafc' || brushColor === '#0f172a' ? defaultColor : brushColor;
     const newStroke: Stroke = {
       points: [coord],
-      color: brushColor,
+      color: activeColor,
       size: brushSize
     };
-    setStrokes(prev => [...prev, newStroke]);
-  };
+    currentStrokeRef.current = newStroke;
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || strokes.length === 0) return;
-    e.preventDefault();
-    const coord = getCoordinates(e);
-
-    setStrokes(prev => {
-      const updated = [...prev];
-      const current = { ...updated[updated.length - 1] };
-      current.points = [...current.points, coord];
-      updated[updated.length - 1] = current;
-      return updated;
-    });
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-    if (strokes.length > 0) {
-      setHasPracticed(true);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.arc(coord.x, coord.y, brushSize / 2, 0, Math.PI * 2);
+      ctx.fillStyle = activeColor;
+      ctx.fill();
     }
   };
 
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !currentStrokeRef.current) return;
+    e.preventDefault();
+    const coord = getCoordinates(e);
+    const stroke = currentStrokeRef.current;
+    const prevCoord = stroke.points[stroke.points.length - 1];
+    stroke.points.push(coord);
+
+    // Direct 60fps 2D context drawing without component re-render
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx && prevCoord) {
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.size;
+      ctx.beginPath();
+      ctx.moveTo(prevCoord.x, prevCoord.y);
+      ctx.lineTo(coord.x, coord.y);
+      ctx.stroke();
+    }
+  };
+
+  const stopDrawing = () => {
+    if (isDrawing && currentStrokeRef.current && currentStrokeRef.current.points.length > 0) {
+      const finishedStroke = currentStrokeRef.current;
+      currentStrokeRef.current = null;
+      setStrokes(prev => [...prev, finishedStroke]);
+      setHasPracticed(true);
+    }
+    setIsDrawing(false);
+  };
+
   const clearCanvas = () => {
+    currentStrokeRef.current = null;
     setStrokes([]);
     setHasPracticed(false);
   };
 
   const undoLast = () => {
+    currentStrokeRef.current = null;
     setStrokes(prev => prev.slice(0, -1));
   };
 
@@ -186,14 +217,15 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     const userImageData = ctx.getImageData(0, 0, width, height);
     const userPixels = userImageData.data;
 
-    // 2. Create offscreen canvas for reference letter template
+    // 2. Create offscreen canvas for reference letter template with matched typography
     const refCanvas = document.createElement('canvas');
     refCanvas.width = width;
     refCanvas.height = height;
     const refCtx = refCanvas.getContext('2d');
     if (!refCtx) return;
 
-    refCtx.font = `bold ${Math.floor(height * 0.65)}px sans-serif`;
+    const fontSize = Math.floor(height * 0.65);
+    refCtx.font = `900 ${fontSize}px 'Noto Sans Sinhala', sans-serif`;
     refCtx.textAlign = 'center';
     refCtx.textBaseline = 'middle';
     refCtx.fillStyle = '#000000';
@@ -299,6 +331,9 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                 <button
                   key={idx}
                   onClick={() => handleLetterChange(idx)}
+                  role="tab"
+                  aria-selected={selectedIdx === idx}
+                  aria-label={`Select letter ${item.letter}, pronounced ${item.romanized}`}
                   className={`h-11 sm:h-12 flex flex-col items-center justify-center rounded-xl transition-all font-semibold border ${
                     selectedIdx === idx
                       ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white border-amber-500 shadow-md shadow-amber-500/20 scale-105'
@@ -335,7 +370,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                   className={`p-2 rounded-xl transition-all ${
                     darkMode ? 'bg-slate-800 hover:bg-slate-700 text-amber-400' : 'bg-amber-50 hover:bg-amber-100 text-amber-700'
                   }`}
-                  aria-label="Speak letter"
+                  aria-label={`Pronounce letter ${letter.letter}`}
                 >
                   🔊 Pronounce
                 </button>
@@ -349,6 +384,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                   <div
                     className="absolute inset-0 flex items-center justify-center text-[180px] sm:text-[230px] font-black select-none pointer-events-none text-slate-200 dark:text-slate-800/40 transition-colors font-sans"
                     lang="si"
+                    aria-hidden="true"
                   >
                     {letter.letter}
                   </div>
@@ -357,6 +393,8 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                 {/* Drawing Layer */}
                 <canvas
                   ref={canvasRef}
+                  role="img"
+                  aria-label={`Interactive drawing canvas for tracing Sinhala letter ${letter.letter}`}
                   onMouseDown={startDrawing}
                   onMouseMove={draw}
                   onMouseUp={stopDrawing}
@@ -364,6 +402,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                   onTouchStart={startDrawing}
                   onTouchMove={draw}
                   onTouchEnd={stopDrawing}
+                  onTouchCancel={stopDrawing}
                   style={{ touchAction: 'none' }}
                   className="absolute inset-0 w-full h-full cursor-crosshair z-10 touch-none"
                 />
@@ -382,6 +421,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                     <button
                       key={i}
                       onClick={() => setBrushColor(c.value)}
+                      aria-label={`Set brush color to ${c.name}`}
                       className={`w-6 h-6 rounded-full ${c.bgClass} border-2 ${
                         brushColor === c.value
                           ? 'border-white ring-2 ring-amber-500 scale-110'
@@ -400,6 +440,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                     min="4"
                     max="20"
                     value={brushSize}
+                    aria-label="Brush stroke thickness"
                     onChange={(e) => setBrushSize(parseInt(e.target.value))}
                     className="w-24 accent-amber-500 cursor-pointer"
                   />
@@ -421,6 +462,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                   <button
                     onClick={undoLast}
                     disabled={strokes.length === 0}
+                    aria-label="Undo last stroke"
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
                       strokes.length === 0
                         ? 'opacity-40 cursor-not-allowed border-slate-300 dark:border-slate-800 text-slate-400'
@@ -433,6 +475,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                   <button
                     onClick={clearCanvas}
                     disabled={strokes.length === 0}
+                    aria-label="Clear canvas"
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
                       strokes.length === 0
                         ? 'opacity-40 cursor-not-allowed border-slate-300 dark:border-slate-800 text-slate-400'
@@ -476,7 +519,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
 
         {/* Accuracy Score Results Modal */}
         {accuracyModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-label="Handwriting Accuracy Score">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl space-y-4">
               <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-500 font-extrabold text-2xl flex items-center justify-center mx-auto border border-amber-500/30">
                 {accuracyModal.grade}
@@ -497,11 +540,13 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                     clearCanvas();
                     if (selectedIdx < alphabet.length - 1) {
                       handleLetterChange(selectedIdx + 1);
+                    } else {
+                      handleLetterChange(0);
                     }
                   }}
                   className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-lg shadow-amber-500/20"
                 >
-                  Next Letter ➔
+                  {selectedIdx < alphabet.length - 1 ? 'Next Letter ➔' : 'Restart Alphabet 🔄'}
                 </button>
                 <button
                   onClick={() => setAccuracyModal(null)}

@@ -25,7 +25,13 @@ export function useSpeech() {
     load();
     try {
       window.speechSynthesis.addEventListener('voiceschanged', load);
-      return () => window.speechSynthesis.removeEventListener('voiceschanged', load);
+      window.speechSynthesis.onvoiceschanged = load;
+      return () => {
+        window.speechSynthesis.removeEventListener('voiceschanged', load);
+        if (window.speechSynthesis.onvoiceschanged === load) {
+          window.speechSynthesis.onvoiceschanged = null;
+        }
+      };
     } catch (e) {
       console.warn('Failed to register voiceschanged event:', e);
     }

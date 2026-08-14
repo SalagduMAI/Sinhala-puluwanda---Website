@@ -6,7 +6,14 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
       const item = window.localStorage.getItem(key);
       if (!item) return initialValue;
       const parsed = JSON.parse(item);
-      if (parsed && typeof parsed === 'object' && initialValue && typeof initialValue === 'object') {
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        !Array.isArray(parsed) &&
+        initialValue &&
+        typeof initialValue === 'object' &&
+        !Array.isArray(initialValue)
+      ) {
         return { ...initialValue, ...parsed } as T;
       }
       return (parsed !== null && parsed !== undefined) ? parsed : initialValue;

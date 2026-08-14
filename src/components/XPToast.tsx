@@ -13,11 +13,15 @@ export default function XPToast({ message, xp, show, onDone }: XPToastProps) {
   useEffect(() => {
     if (show) {
       setVisible(true);
-      const timer = setTimeout(() => {
+      let exitTimer: number;
+      const mainTimer = window.setTimeout(() => {
         setVisible(false);
-        setTimeout(onDone, 300);
+        exitTimer = window.setTimeout(onDone, 300);
       }, 2500);
-      return () => clearTimeout(timer);
+      return () => {
+        window.clearTimeout(mainTimer);
+        window.clearTimeout(exitTimer);
+      };
     }
   }, [show, onDone]);
 

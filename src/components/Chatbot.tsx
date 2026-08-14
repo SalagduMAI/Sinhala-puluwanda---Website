@@ -89,9 +89,9 @@ function parseMarkdown(text: string): React.ReactNode[] {
       } else {
         const innerText = nextRemaining.substring(0, closeIdx);
         if (isBold) {
-          elements.push(<strong key={keyCounter++} className="font-bold">{innerText}</strong>);
+          elements.push(<strong key={`${lineIdx}-${keyCounter++}`} className="font-bold">{innerText}</strong>);
         } else {
-          elements.push(<em key={keyCounter++} className="italic">{innerText}</em>);
+          elements.push(<em key={`${lineIdx}-${keyCounter++}`} className="italic">{innerText}</em>);
         }
         remaining = nextRemaining.substring(closeIdx + token.length);
       }
@@ -203,18 +203,36 @@ function findAnswer(input: string): string {
   return `🤔 I don't have that exact phrase, but here's something useful:\n\n**${rw.english}** = **${rw.sinhala}** (${rw.transliteration})${rw.example ? `\n📝 *${rw.example}* — ${rw.exampleTranslation}` : ''}\n\n💡 Try asking:\n• "First day survival guide"\n• "Common scams to avoid"\n• "Temple etiquette"\n• "I\'m lost, help!"\n• "Is Sri Lanka safe?"`;
 }
 
-// Live Google Gemini API Fetcher
-async function fetchGeminiResponse(prompt: string, apiKey: string): Promise<string> {
+// Live Google Gemini API Fetcher with Header-based API Key & Vision Support
+async function fetchGeminiResponse(prompt: string, apiKey: string, base64Image?: string): Promise<string> {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
     const systemPrompt = "You are a friendly, expert Sinhala Language Tutor and Sri Lanka Survival Guide. Respond concisely and helpfully to tourists learning Sinhala. Include Sinhala script, transliteration, and English translation.";
     
+    const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [
+      { text: `${systemPrompt}\n\nUser Question/Image: ${prompt}` }
+    ];
+
+    if (base64Image) {
+      const mime = base64Image.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+      const data = base64Image.split(',')[1] || base64Image;
+      parts.push({
+        inline_data: {
+          mime_type: mime,
+          data
+        }
+      });
+    }
+
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      },
       body: JSON.stringify({
         contents: [
-          { role: 'user', parts: [{ text: `${systemPrompt}\n\nUser Question: ${prompt}` }] }
+          { role: 'user', parts }
         ]
       })
     });
@@ -302,9 +320,11 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
 
       if (e.key === 'Tab' && modalRef.current) {
         const focusableElements = modalRef.current.querySelectorAll(
-          'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]):not(.hidden), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
         );
-        const elements = Array.from(focusableElements) as HTMLElement[];
+        const elements = Array.from(focusableElements).filter((el): el is HTMLElement => {
+          return (el as HTMLElement).offsetParent !== null;
+        });
         if (elements.length === 0) return;
 
         const first = elements[0];
@@ -329,7 +349,7 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
   }, [isOpen, onClose]);
 
   const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || isTyping) return;
     
     const userMsgId = generateUUID();
     const botMsgId = generateUUID();
@@ -357,7 +377,6 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
         setIsTyping(false);
         return;
       } catch (err) {
-        // Show error to user, then fallback
         console.warn('Gemini API error, falling back to local engine:', err);
       }
     }
@@ -369,10 +388,10 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
       });
       setIsTyping(false);
     }, 400 + Math.random() * 400);
-  }, [geminiApiKey]);
+  }, [geminiApiKey, isTyping]);
 
-  // Photo scan handler — client side representation only (no API backend)
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  // Photo scan handler with live Gemini OCR or helpful fallback
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -387,7 +406,7 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
     }
 
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const dataUrl = ev.target?.result as string;
       const userMsgId = generateUUID();
       const botMsgId = generateUUID();
@@ -405,6 +424,30 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
       
       setIsTyping(true);
 
+      // If Gemini API Key is configured, use live vision translation
+      if (geminiApiKey.trim()) {
+        try {
+          const reply = await fetchGeminiResponse(
+            "Please read any Sinhala signs, labels, food menu items, or text visible in this image. Transcribe the Sinhala letters, provide English pronunciation/transliteration, and explain the English meaning and cultural context.",
+            geminiApiKey,
+            dataUrl
+          );
+          setMessages(prev => [
+            ...prev,
+            {
+              id: botMsgId,
+              role: 'bot' as const,
+              timestamp: Date.now(),
+              text: reply
+            }
+          ].slice(-40));
+          setIsTyping(false);
+          return;
+        } catch (err) {
+          console.warn('Gemini vision API error, falling back to local sign guide:', err);
+        }
+      }
+
       if (typingTimeoutRef.current !== null) {
         window.clearTimeout(typingTimeoutRef.current);
       }
@@ -416,15 +459,15 @@ export default function Chatbot({ darkMode, isOpen, onClose }: ChatbotProps) {
             id: botMsgId,
             role: 'bot' as const,
             timestamp: Date.now(),
-            text: '📸 **Photo received!** Since this app runs entirely offline/client-side, I cannot automatically extract text (OCR) from your image.\n\n🔍 **How to get a translation:**\n1. Type the Sinhala letters you see in the photo\n2. Or describe the sign/menu item\n3. I will translate it for you!\n\n**Common signs in Sri Lanka:**\n• **ඇතුල් වීම** = Entrance\n• **පිටවීම** = Exit\n• **වැසිකිළිය** = Toilet/Restroom\n• **ආපනශාලාව** = Restaurant\n• **ඖෂධ ශාලාව** = Pharmacy\n• **බස් නැවතුම** = Bus Stop\n• **රෝහල** = Hospital\n• **පොලීසිය** = Police\n• **පිවිසීම තහනම්** = No Entry\n\n💡 Type the Sinhala text you see, and I\'ll explain what it means!'
+            text: '📸 **Photo received!**\n\n🔍 **How to get a translation:**\n1. Type the Sinhala letters you see in the photo\n2. Or describe what sign/menu item you\'re looking at\n3. Add a Google Gemini API Key in ⚙️ Settings for instant real-time AI image translation!\n\n**Common signs in Sri Lanka:**\n• **ඇතුල් වීම** = Entrance\n• **පිටවීම** = Exit\n• **වැසිකිළිය** = Toilet/Restroom\n• **ආපනශාලාව** = Restaurant\n• **ඖෂධ ශාලාව** = Pharmacy\n• **බස් නැවතුම** = Bus Stop\n• **රෝහල** = Hospital\n• **පොලීසිය** = Police\n• **පිවිසීම තහනම්** = No Entry\n\n💡 Type any phrase, and I\'ll explain what it means!'
           }
         ].slice(-40));
         setIsTyping(false);
-      }, 1000 + Math.random() * 500);
+      }, 800);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
-  }, []);
+  }, [geminiApiKey]);
 
   if (!isOpen) return null;
 

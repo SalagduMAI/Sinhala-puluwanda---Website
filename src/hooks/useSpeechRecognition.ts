@@ -110,15 +110,14 @@ export function useSpeechRecognition() {
           if (targetWord || targetTransliteration) {
             let score1 = 0, score2 = 0;
             const isSinhala = isSinhalaScript(spokenText);
-            if (targetWord && isSinhala) {
+            if (targetWord) {
               score1 = calculateStringSimilarity(spokenText, targetWord);
             }
-            if (targetTransliteration && !isSinhala) {
+            if (targetTransliteration) {
               score2 = calculateStringSimilarity(spokenText, targetTransliteration);
             }
-            const confidenceScore = Math.min(100, Math.round(lastResult[0].confidence * 100));
-            const finalScore = Math.max(score1, score2, confidenceScore);
-            setAccuracyScore(finalScore);
+            const matchScore = isSinhala ? score1 : (score2 > 0 ? score2 : score1);
+            setAccuracyScore(matchScore);
           }
         }
       };
