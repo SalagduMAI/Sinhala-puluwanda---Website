@@ -1,10 +1,13 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 
 export type VoiceGender = 'male' | 'female';
 
-// Precise phonetic syllables for individual Sinhala alphabet letters
-const SINHALA_LETTER_PHONETICS: Record<string, string> = {
-  // Vowels (ස්වර)
+// Prevent Chromium / Safari Garbage Collection of active utterances
+const activeUtterances = new Set<SpeechSynthesisUtterance>();
+
+// Precise phonetic syllables for all 60 Sinhala alphabet characters
+const SINHALA_PHONETICS: Record<string, string> = {
+  // === Vowels (ස්වර) ===
   'අ': 'ah',
   'ආ': 'aah',
   'ඇ': 'ae',
@@ -24,37 +27,39 @@ const SINHALA_LETTER_PHONETICS: Record<string, string> = {
   'අං': 'ung',
   'අඃ': 'ah-ha',
 
-  // Consonants (ව්‍යංජන with inherent vowel)
+  // === Consonants (ව්‍යංජන) ===
+  // Velar (කණ්ඨ්‍ය)
   'ක': 'kah',
   'ඛ': 'khah',
   'ග': 'gah',
   'ඝ': 'ghah',
   'ඞ': 'ngah',
+  // Palatal (තාලව්‍ය)
   'ච': 'chah',
   'ඡ': 'chhah',
   'ජ': 'jah',
   'ඣ': 'jhah',
   'ඤ': 'nyah',
   'ඥ': 'gnyah',
-  'ඦ': 'njah',
+  // Retroflex (මූර්ධන්‍ය)
   'ට': 'tah',
   'ඨ': 'thah',
   'ඩ': 'dah',
   'ඪ': 'dhah',
   'ණ': 'nah',
-  'ඬ': 'ndah',
+  // Dental (දන්ත්‍ය)
   'ත': 'thah',
   'ථ': 'thhah',
   'ද': 'dhah',
   'ධ': 'dhhah',
   'න': 'nah',
-  'ඳ': 'ndhah',
+  // Labial (ඔෂ්ඨ්‍ය)
   'ප': 'pah',
   'ඵ': 'phah',
   'බ': 'bah',
   'භ': 'bhah',
   'ම': 'mah',
-  'ඹ': 'mbah',
+  // Semi-vowels & Sibilants
   'ය': 'yah',
   'ර': 'rah',
   'ල': 'lah',
@@ -63,8 +68,14 @@ const SINHALA_LETTER_PHONETICS: Record<string, string> = {
   'ෂ': 'shah',
   'ස': 'sah',
   'හ': 'hah',
+  // Special & Pre-nasalized (සඤ්ඤක)
   'ළ': 'lah',
   'ෆ': 'fah',
+  'ඟ': 'nggah',
+  'ඦ': 'njah',
+  'ඬ': 'ndah',
+  'ඳ': 'ndhah',
+  'ඹ': 'mbah',
 };
 
 // Convert Sinhala Unicode words/phrases into natural phonetic speech for fallback engines
@@ -72,12 +83,16 @@ function toSinhalaPhonetic(sinhalaText: string, fallback: string): string {
   const trimmed = sinhalaText.trim();
   
   // Check exact single letter match first
-  if (SINHALA_LETTER_PHONETICS[trimmed]) {
-    return SINHALA_LETTER_PHONETICS[trimmed];
+  if (SINHALA_PHONETICS[trimmed]) {
+    return SINHALA_PHONETICS[trimmed];
+  }
+
+  // Check if string is composed of mapped letters
+  if (trimmed.length === 1 && SINHALA_PHONETICS[trimmed]) {
+    return SINHALA_PHONETICS[trimmed];
   }
 
   if (fallback && fallback.trim()) {
-    // Convert romanized text into natural phonetic English TTS syllables
     return fallback
       .replace(/aa|ā/gi, 'aah')
       .replace(/æ|ae/gi, 'ae')
@@ -85,6 +100,16 @@ function toSinhalaPhonetic(sinhalaText: string, fallback: string): string {
       .replace(/oo|ū/gi, 'ooo')
       .replace(/ō/gi, 'oh')
       .replace(/ē/gi, 'ay')
+      .replace(/ṭ/gi, 't')
+      .replace(/ḍ/gi, 'd')
+      .replace(/ṇ/gi, 'n')
+      .replace(/ḷ/gi, 'l')
+      .replace(/ś|ṣ/gi, 'sh')
+      .replace(/n̆g/gi, 'ngg')
+      .replace(/n̆j/gi, 'nj')
+      .replace(/n̆ḍ/gi, 'nd')
+      .replace(/n̆d/gi, 'ndh')
+      .replace(/m̆b/gi, 'mb')
       .replace(/ayubowan/gi, 'aah-yu-boh-wun')
       .replace(/sthuthi/gi, 'sthoo-thee')
       .replace(/karunakarala/gi, 'kuh-roo-nuh-kuh-ruh-luh')
@@ -109,24 +134,31 @@ export function useSpeech() {
     return 'female';
   });
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const isSpeakingRef = useRef(false);
 
-  // Load voices (they load async in some browsers)
+  // Load voices (they load async across different browsers)
   useEffect(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const load = () => {
+    
+    const updateVoices = () => {
       try {
-        setVoices(window.speechSynthesis.getVoices());
+        const list = window.speechSynthesis.getVoices();
+        if (list && list.length > 0) {
+          setVoices(list);
+        }
       } catch (e) {
         console.warn('Failed to load voices:', e);
       }
     };
-    load();
+
+    updateVoices();
+
     try {
-      window.speechSynthesis.addEventListener('voiceschanged', load);
-      window.speechSynthesis.onvoiceschanged = load;
+      window.speechSynthesis.addEventListener('voiceschanged', updateVoices);
+      window.speechSynthesis.onvoiceschanged = updateVoices;
       return () => {
-        window.speechSynthesis.removeEventListener('voiceschanged', load);
-        if (window.speechSynthesis.onvoiceschanged === load) {
+        window.speechSynthesis.removeEventListener('voiceschanged', updateVoices);
+        if (window.speechSynthesis.onvoiceschanged === updateVoices) {
           window.speechSynthesis.onvoiceschanged = null;
         }
       };
@@ -140,20 +172,25 @@ export function useSpeech() {
       console.warn('Speech synthesis is not supported in this browser.');
       return;
     }
+
     try {
+      // Unfreeze browser speech queue if stuck
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
       window.speechSynthesis.cancel();
     } catch (e) {
       console.warn('Failed to cancel active speech:', e);
     }
 
-    // 1. Try to find a native Sinhala voice
+    // 1. Check for dedicated Sinhala voices
     const sinhalaVoices = voices.filter(v => 
       v.lang.startsWith('si') || 
       /sinhala|sarala|thilini/i.test(v.name)
     );
     const hasSinhalaVoice = sinhalaVoices.length > 0;
 
-    // 2. Try to find Indic regional voices (Tamil, Hindi) which share accurate Brahmic phonetics
+    // 2. Check for Indic voices (Tamil/Hindi) which share accurate Brahmic phonetics
     const indicVoices = voices.filter(v => 
       v.lang.startsWith('ta') || 
       v.lang.startsWith('hi') ||
@@ -175,32 +212,50 @@ export function useSpeech() {
       targetLang = chosenVoice.lang || 'si-LK';
     } else if (hasIndicVoice) {
       chosenVoice = indicVoices.find(v => genderHint.test(v.name)) || indicVoices[0];
-      // Indic engines read Sinhala Unicode text or phonetic transliteration with authentic South Asian sounds
       targetText = toSinhalaPhonetic(text, romanizedFallback);
       targetLang = chosenVoice.lang || 'ta-LK';
     } else {
-      // Fallback to best available generic voice with authentic Sinhala phonetic transcription
       const allMatching = voices.filter(v => genderHint.test(v.name));
       if (allMatching.length) chosenVoice = allMatching[0];
       
       targetText = toSinhalaPhonetic(text, romanizedFallback);
-      targetLang = 'en-US';
+      targetLang = chosenVoice?.lang || 'en-US';
     }
 
     const utterance = new SpeechSynthesisUtterance(targetText);
     utterance.lang = targetLang;
-    // Clear, natural speaking rate
-    utterance.rate = 0.78;
+    utterance.rate = 0.76;
     utterance.volume = 1;
-
-    // Set pitch based on gender preference
-    utterance.pitch = voiceGender === 'female' ? 1.25 : 0.85;
+    utterance.pitch = voiceGender === 'female' ? 1.2 : 0.88;
 
     if (chosenVoice) {
       utterance.voice = chosenVoice;
     }
 
-    window.speechSynthesis.speak(utterance);
+    // GC protection - retain reference until audio finishes
+    activeUtterances.add(utterance);
+    utterance.onend = () => {
+      activeUtterances.delete(utterance);
+      isSpeakingRef.current = false;
+    };
+    utterance.onerror = () => {
+      activeUtterances.delete(utterance);
+      isSpeakingRef.current = false;
+    };
+
+    isSpeakingRef.current = true;
+
+    // Small timeout prevents browser cancel/speak race condition
+    setTimeout(() => {
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.warn('Speech synthesis speak error:', err);
+      }
+    }, 20);
   }, [voiceGender, voices]);
 
   const isSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -211,6 +266,7 @@ export function useSpeech() {
       if (isSupported) {
         try {
           window.speechSynthesis.cancel();
+          activeUtterances.clear();
         } catch (error) {
           console.error('Failed to cancel speech synthesis on unmount:', error);
         }

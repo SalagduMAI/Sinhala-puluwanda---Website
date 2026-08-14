@@ -18,11 +18,9 @@ export default function AlphabetSection({ darkMode, soundEnabled }: AlphabetSect
   const consonantCount = alphabet.filter(a => a.type === 'consonant').length;
 
   const handleLetterClick = (item: typeof alphabet[0]) => {
-    if (selectedLetter?.letter === item.letter) {
-      setSelectedLetter(null);
-    } else {
-      setSelectedLetter(item);
-      if (soundEnabled && isSupported) speak(item.letter, item.romanized);
+    setSelectedLetter(item);
+    if (isSupported) {
+      speak(item.letter, item.romanized);
     }
   };
 
