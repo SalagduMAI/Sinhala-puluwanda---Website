@@ -2,6 +2,104 @@ import { useCallback, useState, useEffect } from 'react';
 
 export type VoiceGender = 'male' | 'female';
 
+// Precise phonetic syllables for individual Sinhala alphabet letters
+const SINHALA_LETTER_PHONETICS: Record<string, string> = {
+  // Vowels (ස්වර)
+  'අ': 'ah',
+  'ආ': 'aah',
+  'ඇ': 'ae',
+  'ඈ': 'aae',
+  'ඉ': 'ee',
+  'ඊ': 'eee',
+  'උ': 'oo',
+  'ඌ': 'ooo',
+  'ඍ': 'roo',
+  'ඎ': 'rooo',
+  'එ': 'eh',
+  'ඒ': 'ay',
+  'ඓ': 'eye',
+  'ඔ': 'oh',
+  'ඕ': 'ooh',
+  'ඖ': 'ow',
+  'අං': 'ung',
+  'අඃ': 'ah-ha',
+
+  // Consonants (ව්‍යංජන with inherent vowel)
+  'ක': 'kah',
+  'ඛ': 'khah',
+  'ග': 'gah',
+  'ඝ': 'ghah',
+  'ඞ': 'ngah',
+  'ච': 'chah',
+  'ඡ': 'chhah',
+  'ජ': 'jah',
+  'ඣ': 'jhah',
+  'ඤ': 'nyah',
+  'ඥ': 'gnyah',
+  'ඦ': 'njah',
+  'ට': 'tah',
+  'ඨ': 'thah',
+  'ඩ': 'dah',
+  'ඪ': 'dhah',
+  'ණ': 'nah',
+  'ඬ': 'ndah',
+  'ත': 'thah',
+  'ථ': 'thhah',
+  'ද': 'dhah',
+  'ධ': 'dhhah',
+  'න': 'nah',
+  'ඳ': 'ndhah',
+  'ප': 'pah',
+  'ඵ': 'phah',
+  'බ': 'bah',
+  'භ': 'bhah',
+  'ම': 'mah',
+  'ඹ': 'mbah',
+  'ය': 'yah',
+  'ර': 'rah',
+  'ල': 'lah',
+  'ව': 'vah',
+  'ශ': 'shah',
+  'ෂ': 'shah',
+  'ස': 'sah',
+  'හ': 'hah',
+  'ළ': 'lah',
+  'ෆ': 'fah',
+};
+
+// Convert Sinhala Unicode words/phrases into natural phonetic speech for fallback engines
+function toSinhalaPhonetic(sinhalaText: string, fallback: string): string {
+  const trimmed = sinhalaText.trim();
+  
+  // Check exact single letter match first
+  if (SINHALA_LETTER_PHONETICS[trimmed]) {
+    return SINHALA_LETTER_PHONETICS[trimmed];
+  }
+
+  if (fallback && fallback.trim()) {
+    // Convert romanized text into natural phonetic English TTS syllables
+    return fallback
+      .replace(/aa|ā/gi, 'aah')
+      .replace(/æ|ae/gi, 'ae')
+      .replace(/ee|ī/gi, 'eee')
+      .replace(/oo|ū/gi, 'ooo')
+      .replace(/ō/gi, 'oh')
+      .replace(/ē/gi, 'ay')
+      .replace(/ayubowan/gi, 'aah-yu-boh-wun')
+      .replace(/sthuthi/gi, 'sthoo-thee')
+      .replace(/karunakarala/gi, 'kuh-roo-nuh-kuh-ruh-luh')
+      .replace(/kohomada/gi, 'koh-hoh-muh-duh')
+      .replace(/subha/gi, 'soo-buh')
+      .replace(/davasak/gi, 'duh-vuh-suk')
+      .replace(/hondayi/gi, 'hon-duh-yee')
+      .replace(/samavenna/gi, 'suh-muh-ven-nuh')
+      .replace(/ow/gi, 'ovv')
+      .replace(/nahe|nae|naha/gi, 'næ-hæ');
+  }
+
+  return sinhalaText;
+}
+
 export function useSpeech() {
   const [voiceGender, setVoiceGender] = useState<VoiceGender>(() => {
     try {
@@ -48,34 +146,59 @@ export function useSpeech() {
       console.warn('Failed to cancel active speech:', e);
     }
 
-    // Try to find a matching Sinhala voice, preferring the chosen gender
-    const sinhalaVoices = voices.filter(v => v.lang.startsWith('si'));
+    // 1. Try to find a native Sinhala voice
+    const sinhalaVoices = voices.filter(v => 
+      v.lang.startsWith('si') || 
+      /sinhala|sarala|thilini/i.test(v.name)
+    );
     const hasSinhalaVoice = sinhalaVoices.length > 0;
-    const genderHint = voiceGender === 'female' ? /female|woman|zira|samantha|google.*si/i : /male|man|david|google.*si/i;
 
-    let chosen = sinhalaVoices.find(v => genderHint.test(v.name));
-    if (!chosen && hasSinhalaVoice) chosen = sinhalaVoices[0];
+    // 2. Try to find Indic regional voices (Tamil, Hindi) which share accurate Brahmic phonetics
+    const indicVoices = voices.filter(v => 
+      v.lang.startsWith('ta') || 
+      v.lang.startsWith('hi') ||
+      /india|tamil|hindi/i.test(v.name)
+    );
+    const hasIndicVoice = indicVoices.length > 0;
 
-    // Fallback: try any voice matching gender hint
-    if (!chosen) {
+    const genderHint = voiceGender === 'female' 
+      ? /female|woman|zira|samantha|sarala|google.*(si|ta|hi)/i 
+      : /male|man|david|thilini|google.*(si|ta|hi)/i;
+
+    let chosenVoice: SpeechSynthesisVoice | undefined;
+    let targetText = text;
+    let targetLang = lang;
+
+    if (hasSinhalaVoice) {
+      chosenVoice = sinhalaVoices.find(v => genderHint.test(v.name)) || sinhalaVoices[0];
+      targetText = text;
+      targetLang = chosenVoice.lang || 'si-LK';
+    } else if (hasIndicVoice) {
+      chosenVoice = indicVoices.find(v => genderHint.test(v.name)) || indicVoices[0];
+      // Indic engines read Sinhala Unicode text or phonetic transliteration with authentic South Asian sounds
+      targetText = toSinhalaPhonetic(text, romanizedFallback);
+      targetLang = chosenVoice.lang || 'ta-LK';
+    } else {
+      // Fallback to best available generic voice with authentic Sinhala phonetic transcription
       const allMatching = voices.filter(v => genderHint.test(v.name));
-      if (allMatching.length) chosen = allMatching[0];
+      if (allMatching.length) chosenVoice = allMatching[0];
+      
+      targetText = toSinhalaPhonetic(text, romanizedFallback);
+      targetLang = 'en-US';
     }
-
-    // Determine target text and language based on voice availability
-    const targetText = (!hasSinhalaVoice && romanizedFallback) ? romanizedFallback : text;
-    const targetLang = (!hasSinhalaVoice && romanizedFallback) ? 'en-US' : lang;
 
     const utterance = new SpeechSynthesisUtterance(targetText);
     utterance.lang = targetLang;
-    // Slow down rate slightly for clearer learning pronunciation
-    utterance.rate = 0.7;
+    // Clear, natural speaking rate
+    utterance.rate = 0.78;
     utterance.volume = 1;
 
     // Set pitch based on gender preference
-    utterance.pitch = voiceGender === 'female' ? 1.3 : 0.8;
+    utterance.pitch = voiceGender === 'female' ? 1.25 : 0.85;
 
-    if (chosen) utterance.voice = chosen;
+    if (chosenVoice) {
+      utterance.voice = chosenVoice;
+    }
 
     window.speechSynthesis.speak(utterance);
   }, [voiceGender, voices]);

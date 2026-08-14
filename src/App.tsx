@@ -43,6 +43,21 @@ export default function App() {
   const [activeToast, setActiveToast] = useState<{ message: string; xp: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [scrollToSection, setScrollToSection] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
+    try {
+      const done = localStorage.getItem('sinhala_onboarding_done');
+      return !done;
+    } catch {
+      return false;
+    }
+  });
+
+  const handleCloseOnboarding = useCallback(() => {
+    setShowOnboarding(false);
+    try {
+      localStorage.setItem('sinhala_onboarding_done', 'true');
+    } catch {}
+  }, []);
 
   const {
     state, learnWord, recordQuiz, unlockMatchAchievement,
@@ -205,21 +220,7 @@ export default function App() {
     }
   }, [view]);
 
-  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
-    try {
-      const done = localStorage.getItem('sinhala_onboarding_done');
-      return !done;
-    } catch {
-      return false;
-    }
-  });
 
-  const handleCloseOnboarding = () => {
-    setShowOnboarding(false);
-    try {
-      localStorage.setItem('sinhala_onboarding_done', 'true');
-    } catch {}
-  };
 
   const navProps = {
     level: state.level, xp: state.xp, xpProgress,
