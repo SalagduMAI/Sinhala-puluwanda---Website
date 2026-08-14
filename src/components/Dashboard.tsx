@@ -19,68 +19,90 @@ interface DashboardProps {
   starredWords: Record<number, number[]>;
   srsData: Record<string, { interval: number; ease: number; repetitions: number; nextReview: number }>;
   avatar: string;
+  userName: string;
   onBack: () => void;
   onToggleStarWord: (lessonId: number, wordIndex: number) => void;
   onChangeAvatar: (avatarId: string) => void;
+  onUpdateProfile?: (name: string, avatar: string) => void;
+  onResetProgress?: () => void;
+  onSetDailyGoal?: (goal: number) => void;
   onImportState: (state: Record<string, unknown>) => boolean;
 }
 
-const AVATARS = [
-  { id: 'novice', label: 'Novice 🌱', minLevel: 1, desc: 'Start learning' },
-  { id: 'traveler', label: 'Traveler 🛺', minLevel: 2, desc: 'Level 2 Required' },
-  { id: 'chatter', label: 'Chatter 💬', minLevel: 3, desc: 'Level 3 Required' },
-  { id: 'scholar', label: 'Scholar 🎓', minLevel: 5, desc: 'Level 5 Required' },
-  { id: 'expert', label: 'Expert 👑', minLevel: 10, desc: 'Level 10 Required' }
+export const PROFILE_AVATARS = [
+  { emoji: '🦁', name: 'Lion of Lanka', tag: 'Brave' },
+  { emoji: '🐘', name: 'Royal Tusker', tag: 'Wise' },
+  { emoji: '🌴', name: 'Island Explorer', tag: 'Adventurer' },
+  { emoji: '🏄', name: 'Arugam Surfer', tag: 'Energetic' },
+  { emoji: '🇱🇰', name: 'Sri Lankan Flag', tag: 'Proud' },
+  { emoji: '🌟', name: 'Star Learner', tag: 'Bright' },
+  { emoji: '🎓', name: 'Sinhala Scholar', tag: 'Studious' },
+  { emoji: '👑', name: 'King of Kandy', tag: 'Royal' },
+  { emoji: '🦚', name: 'Peacock Spirit', tag: 'Graceful' },
+  { emoji: '🪷', name: 'Sacred Lotus', tag: 'Serene' },
+  { emoji: '⚡', name: 'Fast Learner', tag: 'Quick' },
+  { emoji: '🚀', name: 'Fluent Voyager', tag: 'Future' },
 ];
 
-const getLeaderboard = (userXp: number, userLevel: number) => {
-  const mockUsers = [
-    { name: 'Saman Kumara 🇱🇰', xp: 2450, level: 25, avatar: '👑' },
-    { name: 'Elena Rostova 🇩🇪', xp: 1890, level: 19, avatar: '🎓' },
-    { name: 'Taro Tanaka 🇯🇵', xp: 950, level: 10, avatar: '🛺' },
-    { name: 'Sarah Jenkins 🇬🇧', xp: 720, level: 8, avatar: '💬' },
-  ];
-  const allEntries = [
-    ...mockUsers,
-    { name: 'You (Current Learner)', xp: userXp, level: userLevel, avatar: '🌱', isUser: true }
-  ].sort((a, b) => b.xp - a.xp).map((entry, idx) => ({ ...entry, rank: idx + 1 }));
-  return allEntries;
-};
+export interface LeaderboardEntry {
+  name: string;
+  xp: number;
+  level: number;
+  avatar: string;
+  country: string;
+  isUser?: boolean;
+  rank?: number;
+}
+
+const GLOBAL_LEARNERS: LeaderboardEntry[] = [
+  { name: 'Kasun Senanayake 🇱🇰', xp: 3250, level: 33, avatar: '🦁', country: 'Sri Lanka' },
+  { name: 'Emily Watson 🇬🇧', xp: 2450, level: 25, avatar: '🎓', country: 'United Kingdom' },
+  { name: 'Liam O\'Connor 🇦🇺', xp: 1890, level: 19, avatar: '🏄', country: 'Australia' },
+  { name: 'Taro Tanaka 🇯🇵', xp: 1340, level: 14, avatar: '🌴', country: 'Japan' },
+  { name: 'Sophie Dubois 🇫🇷', xp: 950, level: 10, avatar: '🪷', country: 'France' },
+  { name: 'Johannes Müller 🇩🇪', xp: 680, level: 7, avatar: '⚡', country: 'Germany' },
+  { name: 'Maya Patel 🇮🇳', xp: 450, level: 5, avatar: '🦚', country: 'India' },
+  { name: 'David Chen 🇨🇦', xp: 220, level: 3, avatar: '🚀', country: 'Canada' },
+];
 
 export default function Dashboard({
   darkMode, xp, level, streak, xpProgress, totalWordsLearned, achievements,
   totalQuizzes, perfectScores, wordsLearned, dailyXp, dailyGoal,
-  starredWords, srsData, avatar, onBack, onToggleStarWord, onChangeAvatar, onImportState
+  starredWords, srsData, avatar = '🦁', userName = 'Learner',
+  onBack, onToggleStarWord, onChangeAvatar, onUpdateProfile, onResetProgress, onSetDailyGoal, onImportState
 }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'stats' | 'starred' | 'leaderboard' | 'cloud' | 'settings'>('stats');
-  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-  const [cloudSyncEnabled, setCloudSyncEnabled] = useState<boolean>(() => localStorage.getItem('cloud_sync_enabled') === 'true');
+  const [activeTab, setActiveTab] = useState<'stats' | 'starred' | 'leaderboard' | 'settings'>('stats');
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [editName, setEditName] = useState(userName);
+  const [selectedAvatar, setSelectedAvatar] = useState(avatar);
+  const [customGoal, setCustomGoal] = useState(dailyGoal);
 
-  const { speak, isSupported } = useSpeech();
+  const { speak } = useSpeech();
 
   const dailyProgress = dailyGoal > 0 ? Math.min((dailyXp / dailyGoal) * 100, 100) : 100;
   const totalPhrases = lessons.reduce((sum, lesson) => sum + lesson.words.length, 0);
 
-  // Count due words for SRS
-  const srsDueCount = useMemo(() => {
-    const now = Date.now();
-    let count = 0;
-    // Flatten learned words keys
-    Object.entries(wordsLearned).forEach(([lIdStr, wordIndices]) => {
-      const lessonId = parseInt(lIdStr);
-      wordIndices.forEach(wordIdx => {
-        const key = `${lessonId}-${wordIdx}`;
-        const srs = srsData?.[key];
-        if (!srs || srs.nextReview <= now) {
-          count++;
-        }
-      });
-    });
-    return count;
-  }, [wordsLearned, srsData]);
+  // Calculate live global leaderboard with user ranked dynamically
+  const leaderboard: LeaderboardEntry[] = useMemo(() => {
+    const userEntry: LeaderboardEntry = {
+      name: `${userName} (You)`,
+      xp,
+      level,
+      avatar,
+      country: 'Your Account',
+      isUser: true,
+      rank: 1,
+    };
 
-  // Memoize leaderboard ranking
-  const leaderboard = useMemo(() => getLeaderboard(xp, level), [xp, level]);
+    const all = [...GLOBAL_LEARNERS, userEntry].sort((a, b) => b.xp - a.xp);
+    return all.map((entry, idx) => ({ ...entry, rank: idx + 1 }));
+  }, [userName, xp, level, avatar]);
+
+  const userRank = useMemo(() => {
+    const found = leaderboard.find(item => 'isUser' in item && item.isUser);
+    return found ? found.rank : 1;
+  }, [leaderboard]);
 
   // Flatten starred words list
   const starredList = useMemo(() => {
@@ -97,7 +119,7 @@ export default function Dashboard({
             wordIdx,
             sinhala: word.sinhala,
             english: word.english,
-            romanized: word.transliteration
+            romanized: word.transliteration,
           });
         }
       });
@@ -105,8 +127,30 @@ export default function Dashboard({
     return list;
   }, [starredWords]);
 
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (onUpdateProfile) {
+      onUpdateProfile(editName, selectedAvatar);
+    } else {
+      onChangeAvatar(selectedAvatar);
+    }
+    if (onSetDailyGoal && customGoal !== dailyGoal) {
+      onSetDailyGoal(customGoal);
+    }
+    setIsEditProfileOpen(false);
+  };
+
+  const handleExecuteReset = () => {
+    if (onResetProgress) {
+      onResetProgress();
+    }
+    setIsResetConfirmOpen(false);
+  };
+
   const handleExport = () => {
     const backupData = {
+      userName,
+      avatar,
       xp,
       level,
       streak,
@@ -116,15 +160,15 @@ export default function Dashboard({
       perfectScores,
       starredWords,
       srsData,
-      avatar,
+      dailyGoal,
       version: '6.1.3',
-      exportDate: Date.now()
+      exportDate: Date.now(),
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sinhala_puluwanda_progress_${Date.now()}.json`;
+    a.download = `sinhala_puluwanda_${userName.toLowerCase().replace(/\s+/g, '_')}_backup.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -139,483 +183,450 @@ export default function Dashboard({
         const requiredKeys = ['xp', 'level', 'streak', 'wordsLearned'];
         const isValid = requiredKeys.every(k => k in parsed);
         if (!isValid) {
-          alert('❌ Invalid backup file: missing required fields.');
+          alert('❌ Invalid backup file: missing required progress fields.');
           return;
         }
         const success = onImportState(parsed);
         if (success) {
           setTimeout(() => window.location.reload(), 200);
-        } else {
-          console.error('❌ Invalid backup file. Please upload a valid JSON backup file.');
         }
       } catch (err) {
-        console.error('❌ Error reading backup file. Make sure it is a valid JSON file.');
+        console.error('❌ Error reading backup file:', err);
       }
     };
     reader.readAsText(file);
-    e.target.value = ''; // Reset input
-  };
-
-  const currentAvatarInfo = AVATARS.find(a => a.id === avatar) || AVATARS[0];
-
-  const handlePlayWordSound = (e: React.MouseEvent, word: string) => {
-    e.stopPropagation();
-    if (isSupported) {
-      speak(word);
-    }
+    e.target.value = '';
   };
 
   return (
-    <div className={`min-h-screen pt-20 pb-16 px-4 ${darkMode ? 'bg-slate-950 text-white' : 'bg-gradient-to-b from-slate-50 to-white text-slate-950'}`}>
+    <div className={`min-h-screen pt-20 pb-16 px-4 sm:px-6 ${darkMode ? 'bg-slate-950 text-white' : 'bg-gradient-to-b from-slate-50 to-white text-slate-950'}`}>
       <div className="max-w-5xl mx-auto space-y-6">
         
-        {/* Header with Back button and Avatar Selection */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-700/20 pb-4">
-          <div>
-            <button onClick={onBack} className={`flex items-center gap-2 text-sm mb-2 ${darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} transition-colors`}>
-              ⬅️ Back
-            </button>
-            <div className="flex items-center space-x-3">
-              <div className="relative">
+        {/* Top User Profile Banner */}
+        <div className={`rounded-3xl p-6 sm:p-8 border transition-all ${
+          darkMode ? 'bg-slate-900/80 border-slate-800 shadow-xl' : 'bg-white border-slate-200 shadow-lg'
+        }`}>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            
+            {/* User Avatar & Info */}
+            <div className="flex items-center gap-4 sm:gap-5">
+              <div className="relative group">
                 <button
-                  onClick={() => setAvatarMenuOpen(prev => !prev)}
-                  className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-400 to-amber-500 flex items-center justify-center text-xl shadow-md border-2 border-white hover:scale-105 active:scale-95 transition-transform"
-                  title="Choose Avatar Badge"
+                  onClick={() => setIsEditProfileOpen(true)}
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-saffron-400 to-saffron-600 flex items-center justify-center text-3xl sm:text-4xl shadow-xl shadow-saffron-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-white/20"
+                  title="Click to customize profile avatar"
                 >
-                  {currentAvatarInfo.label.split(' ')[1] || '👤'}
+                  <span>{avatar}</span>
                 </button>
-                
-                {avatarMenuOpen && (
-                  <div className={`absolute left-0 mt-2 w-56 rounded-2xl p-3 border shadow-2xl z-[90] space-y-2 ${
-                    darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-                  }`}>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 px-2 pb-1 border-b border-slate-700/10">Select Badge</h4>
-                    <div className="space-y-1">
-                      {AVATARS.map(av => {
-                        const unlocked = level >= av.minLevel;
-                        return (
-                          <button
-                            key={av.id}
-                            disabled={!unlocked}
-                            onClick={() => { onChangeAvatar(av.id); setAvatarMenuOpen(false); }}
-                            className={`w-full flex items-center justify-between p-2 rounded-xl text-left text-xs transition-all ${
-                              unlocked
-                                ? avatar === av.id
-                                  ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20 font-bold'
-                                  : 'hover:bg-slate-800/50 hover:text-amber-500 border border-transparent'
-                                : 'opacity-40 cursor-not-allowed border border-transparent'
-                            }`}
-                          >
-                            <span>{av.label}</span>
-                            {!unlocked && <span className="text-[10px] text-slate-500">Lvl {av.minLevel}🔒</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                <button
+                  onClick={() => setIsEditProfileOpen(true)}
+                  className="absolute -bottom-1 -right-1 bg-slate-900 text-white dark:bg-white dark:text-slate-900 p-1.5 rounded-lg text-xs shadow-md opacity-80 hover:opacity-100 hover:scale-110 transition-all"
+                  aria-label="Edit Profile"
+                >
+                  ✏️
+                </button>
               </div>
+
               <div>
-                <h1 className="text-2xl sm:text-3xl font-black font-space">
-                  {currentAvatarInfo.label.split(' ')[0]}'s Profile
-                </h1>
-                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Badge: <span className="font-semibold text-amber-500">{currentAvatarInfo.label}</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <h1 className="text-xl sm:text-2xl font-black font-space tracking-tight">
+                    {userName}
+                  </h1>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    darkMode ? 'bg-saffron-500/20 text-saffron-400 border border-saffron-500/30' : 'bg-saffron-100 text-saffron-700'
+                  }`}>
+                    Level {level}
+                  </span>
+                </div>
+                <p className={`text-xs sm:text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Rank #{userRank} Global • {xp} Total XP • 🔥 {streak} Day Streak
                 </p>
               </div>
             </div>
-          </div>
 
-          {/* Quick Review Alert / CTA */}
-          {srsDueCount > 0 && (
-            <div className={`p-3 rounded-2xl flex items-center space-x-3 border ${
-              darkMode ? 'bg-emerald-950/20 border-emerald-800/30' : 'bg-emerald-50 border-emerald-100'
-            }`}>
-              <div className="text-xl">📚</div>
-              <div>
-                <div className="text-xs font-bold">Review Spaced Repetition</div>
-                <div className={`text-[10px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  You have <span className="text-emerald-500 font-bold">{srsDueCount} words</span> due for review.
-                </div>
-              </div>
+            {/* Quick Actions */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
+              <button
+                onClick={() => setIsEditProfileOpen(true)}
+                className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ${
+                  darkMode ? 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+                }`}
+              >
+                <span>✏️</span> Edit Profile
+              </button>
+
+              <button
+                onClick={onBack}
+                className="px-4 py-2.5 bg-gradient-to-r from-saffron-500 to-saffron-600 hover:from-saffron-400 hover:to-saffron-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-saffron-500/20 flex items-center justify-center gap-1.5"
+              >
+                <span>🏠</span> Home
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Tab Controls */}
-        <div className="flex overflow-x-auto border-b border-slate-700/20 gap-1 pb-1 scrollbar-none whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
-          {(['stats', 'starred', 'leaderboard', 'cloud', 'settings'] as const).map(tab => (
+        {/* Navigation Tabs */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-700/20 pb-2">
+          {[
+            { id: 'stats', label: '📊 Stats & Progress' },
+            { id: 'leaderboard', label: `🏆 Global Leaderboard (Rank #${userRank})` },
+            { id: 'starred', label: `⭐ Starred Words (${starredList.length})` },
+            { id: 'settings', label: '⚙️ Settings & Reset' },
+          ].map(tab => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 font-semibold text-xs sm:text-sm border-b-2 -mb-[2px] transition-all capitalize shrink-0 ${
-                activeTab === tab
-                  ? 'border-amber-500 text-amber-500 font-bold'
-                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
+                activeTab === tab.id
+                  ? 'bg-saffron-500 text-white shadow-lg shadow-saffron-500/20'
+                  : darkMode
+                  ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              {tab === 'stats' ? '📊 Stats' : tab === 'starred' ? `⭐ Starred (${starredList.length})` : tab === 'leaderboard' ? '🏆 Leaderboard' : tab === 'cloud' ? '☁️ Cloud Sync' : '⚙️ Backup'}
+              {tab.label}
             </button>
           ))}
         </div>
 
-        {/* TABS CONTAINER */}
-        <div>
-          {/* TAB: GLOBAL LEADERBOARD */}
-          {activeTab === 'leaderboard' && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              <div className={`p-6 rounded-3xl border ${
-                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'
-              }`}>
-                <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
-                  <span>🏆</span> Global Sinhala Learners Ranking
-                </h3>
-                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'} mb-6`}>
-                  Top active Sinhala language learners competing worldwide.
-                </p>
-
-                <div className="space-y-3">
-                  {leaderboard.map((item, idx) => {
-                    const isUser = 'isUser' in item && item.isUser;
-                    const itemXP = isUser ? xp : item.xp;
-                    const itemLevel = isUser ? level : item.level;
-
-                    return (
-                      <div
-                        key={idx}
-                        className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
-                          isUser
-                            ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 font-bold'
-                            : darkMode
-                            ? 'bg-slate-950/40 border-slate-800 text-slate-200'
-                            : 'bg-slate-50 border-slate-200 text-slate-800'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
-                            item.rank === 1 ? 'bg-amber-500 text-white' : item.rank === 2 ? 'bg-slate-400 text-white' : 'bg-slate-700/30 text-slate-400'
-                          }`}>
-                            #{item.rank}
-                          </span>
-                          <span className="text-xl">{item.avatar}</span>
-                          <div>
-                            <div className="text-sm font-bold">{item.name}</div>
-                            <div className="text-[10px] opacity-70">Level {itemLevel}</div>
-                          </div>
-                        </div>
-
-                        <div className="text-sm font-extrabold font-space">
-                          {itemXP} XP
-                        </div>
-                      </div>
-                    );
-                  })}
+        {/* TAB 1: STATS & OVERVIEW */}
+        {activeTab === 'stats' && (
+          <div className="space-y-6">
+            {/* Key 4 Cards */}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: 'Level & Rank', value: `Lv.${level}`, icon: '⭐', color: 'from-amber-400 to-amber-600', sub: `Rank #${userRank} Global` },
+                { label: 'Day Streak', value: `${streak}d`, icon: '🔥', color: 'from-orange-400 to-red-500', sub: streak > 0 ? 'Active Streak!' : 'Start Today' },
+                { label: 'Words Learned', value: totalWordsLearned, icon: '📚', color: 'from-blue-400 to-blue-600', sub: `out of ${totalPhrases} words` },
+                { label: 'Quizzes Taken', value: totalQuizzes, icon: '🧪', color: 'from-purple-400 to-purple-600', sub: `${perfectScores} Perfect Scores` },
+              ].map((stat, i) => (
+                <div
+                  key={i}
+                  className={`rounded-3xl p-5 border transition-all ${
+                    darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-2xl">{stat.icon}</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      darkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
+                    }`}>{stat.sub}</span>
+                  </div>
+                  <p className={`text-3xl sm:text-4xl font-extrabold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
+                    {stat.value}
+                  </p>
+                  <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{stat.label}</p>
                 </div>
-              </div>
+              ))}
             </div>
-          )}
 
-          {/* TAB: CLOUD SYNC */}
-          {activeTab === 'cloud' && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              <div className={`p-6 rounded-3xl border ${
-                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'
-              }`}>
-                <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
-                  <span>☁️</span> Cloud Account & Auto-Sync
-                </h3>
-                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'} mb-6`}>
-                  Synchronize your progress, XP, and achievements across multiple devices (Mobile, PC, Tablet).
-                </p>
-
-                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                        {cloudSyncEnabled ? 'Cloud Auto-Sync Active ✅' : 'Client-Side Offline Mode 📱'}
-                      </div>
-                      <div className="text-xs text-slate-600 dark:text-slate-300">
-                        {cloudSyncEnabled ? 'Your progress is automatically saved.' : 'Progress is stored locally in browser storage.'}
-                      </div>
+            {/* Level progress & Daily Goal */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              {/* Level progress */}
+              <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
+                <h3 className="font-bold text-sm mb-4">Level Progress</h3>
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-saffron-400 to-saffron-600 flex items-center justify-center shadow-lg text-white font-bold text-xl">
+                    {level}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold">Level {level}</span>
+                      <span className="text-xs text-slate-500">{xp % XP_PER_LEVEL}/{XP_PER_LEVEL} XP</span>
                     </div>
-                    <button
-                      onClick={() => {
-                        const next = !cloudSyncEnabled;
-                        setCloudSyncEnabled(next);
-                        localStorage.setItem('cloud_sync_enabled', String(next));
-                      }}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                        cloudSyncEnabled
-                          ? 'bg-rose-500 text-white hover:bg-rose-600'
-                          : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                      }`}
-                    >
-                      {cloudSyncEnabled ? 'Disable Sync' : 'Enable Sync'}
-                    </button>
+                    <div role="progressbar" aria-valuenow={xpProgress} aria-valuemin={0} aria-valuemax={100} aria-label="Level progress" className={`h-2.5 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                      <div className="h-full bg-gradient-to-r from-saffron-400 to-saffron-500 rounded-full transition-all duration-700 xp-bar-glow" style={{ width: `${xpProgress}%` }} />
+                    </div>
                   </div>
                 </div>
+                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {XP_PER_LEVEL - (xp % XP_PER_LEVEL)} XP needed to reach Level {level + 1}
+                </p>
+              </div>
+
+              {/* Daily goal */}
+              <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-sm">🎯 Daily Goal</h3>
+                  <button
+                    onClick={() => setIsEditProfileOpen(true)}
+                    className="text-xs text-saffron-500 hover:underline font-semibold"
+                  >
+                    Change Goal
+                  </button>
+                </div>
+                <div className="flex items-center justify-center mb-3">
+                  <div className="relative w-24 h-24">
+                    <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100" role="progressbar" aria-valuenow={Math.round(dailyProgress)} aria-valuemin={0} aria-valuemax={100} aria-label="Daily goal progress">
+                      <circle cx="50" cy="50" r="42" fill="none" strokeWidth="8" className={darkMode ? 'stroke-slate-800' : 'stroke-slate-100'} />
+                      <circle
+                        cx="50" cy="50" r="42" fill="none" strokeWidth="8"
+                        className="stroke-saffron-500 transition-all duration-700"
+                        strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 42}`}
+                        strokeDashoffset={`${2 * Math.PI * 42 * (1 - dailyProgress / 100)}`}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-xl font-bold">{dailyXp}</span>
+                      <span className="text-[10px] text-slate-500">/{dailyGoal} XP</span>
+                    </div>
+                  </div>
+                </div>
+                <p className={`text-center text-xs ${
+                  dailyProgress >= 100
+                    ? 'text-emerald-500 font-semibold'
+                    : darkMode ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  {dailyProgress >= 100 ? '🎉 Daily goal completed for today!' : `${Math.round(dailyProgress)}% complete`}
+                </p>
               </div>
             </div>
-          )}
-          {/* TAB 1: PROGRESS & STATS */}
-          {activeTab === 'stats' && (
-            <div className="space-y-6">
-              {/* Main stats grid */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: 'Level', value: level, icon: '⭐', color: 'from-amber-400 to-amber-600', sub: `${xp} total XP` },
-                  { label: 'Day Streak', value: streak, icon: '🔥', color: 'from-orange-400 to-red-500', sub: 'Keep it up!' },
-                  { label: 'Words Learned', value: totalWordsLearned, icon: '📚', color: 'from-blue-400 to-blue-600', sub: `out of ${totalPhrases}` },
-                  { label: 'Quizzes Taken', value: totalQuizzes, icon: '🧪', color: 'from-purple-400 to-purple-600', sub: `${perfectScores} perfect` },
-                ].map((stat, i) => (
+
+            {/* Lesson breakdown */}
+            <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
+              <h3 className="font-bold text-sm mb-5">📚 Lesson Progress</h3>
+              <div className="space-y-4">
+                {lessons.map(lesson => {
+                  const learned = wordsLearned[lesson.id]?.length || 0;
+                  const total = lesson.words.length;
+                  const pct = Math.round((learned / total) * 100);
+                  return (
+                    <div key={lesson.id} className="flex items-center gap-4">
+                      <span className="text-xl w-8 text-center">{lesson.icon}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold">{lesson.title}</span>
+                          <span className="text-[10px] text-slate-500">{learned}/{total}</span>
+                        </div>
+                        <div role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${lesson.title} progress`} className={`h-2 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                          <div className={`h-full rounded-full bg-gradient-to-r ${lesson.color} transition-all duration-500`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                      {pct === 100 && <span className="text-emerald-500 text-xs font-bold">✓</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Achievements */}
+            <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-bold text-sm">🏆 Achievements ({achievements.length}/{ALL_ACHIEVEMENTS.length})</h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {ALL_ACHIEVEMENTS.map(ach => {
+                  const unlocked = achievements.includes(ach.id);
+                  return (
+                    <div
+                      key={ach.id}
+                      className={`p-4 rounded-2xl border text-center transition-all ${
+                        unlocked
+                          ? darkMode
+                            ? 'bg-amber-500/10 border-amber-500/30'
+                            : 'bg-amber-50 border-amber-200 shadow-sm'
+                          : darkMode
+                          ? 'bg-slate-950/40 border-slate-800/60 opacity-40 grayscale'
+                          : 'bg-slate-50 border-slate-200/60 opacity-40 grayscale'
+                      }`}
+                    >
+                      <span className="text-3xl block mb-2">{ach.icon}</span>
+                      <p className={`font-bold text-xs mb-1 ${
+                        unlocked
+                          ? darkMode ? 'text-amber-400' : 'text-amber-700'
+                          : darkMode ? 'text-slate-500' : 'text-slate-400'
+                      }`}>{ach.title}</p>
+                      <p className="text-[10px] text-slate-400 leading-snug">{ach.description}</p>
+                      {unlocked && <span className="text-[10px] text-emerald-500 font-bold mt-1.5 block">✓ Unlocked</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: GLOBAL LEADERBOARD */}
+        {activeTab === 'leaderboard' && (
+          <div className="space-y-4">
+            <div className={`p-6 sm:p-8 rounded-3xl border ${
+              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                <div>
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <span>🏆</span> Global Sinhala Learners Leaderboard
+                  </h3>
+                  <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'} mt-1`}>
+                    Real-time world ranking based on cumulative experience points (XP).
+                  </p>
+                </div>
+                <div className="px-4 py-2 bg-saffron-500/10 border border-saffron-500/30 rounded-2xl text-saffron-500 font-bold text-xs">
+                  Your Rank: #{userRank} ({xp} XP)
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {leaderboard.map((item, idx) => {
+                  const isUser = 'isUser' in item && item.isUser;
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-4 sm:p-5 rounded-2xl border flex items-center justify-between transition-all ${
+                        isUser
+                          ? 'bg-gradient-to-r from-saffron-500/15 via-amber-500/10 to-transparent border-saffron-500 text-saffron-500 font-bold ring-2 ring-saffron-500/20 shadow-md'
+                          : darkMode
+                          ? 'bg-slate-950/60 border-slate-800 text-slate-200'
+                          : 'bg-slate-50 border-slate-200 text-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <span className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs ${
+                          item.rank === 1
+                            ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md'
+                            : item.rank === 2
+                            ? 'bg-slate-400 text-white'
+                            : item.rank === 3
+                            ? 'bg-amber-700 text-white'
+                            : 'bg-slate-700/20 text-slate-400'
+                        }`}>
+                          #{item.rank}
+                        </span>
+                        <span className="text-2xl">{item.avatar}</span>
+                        <div>
+                          <div className="text-sm font-bold flex items-center gap-1.5">
+                            {item.name}
+                            {isUser && <span className="text-[10px] px-1.5 py-0.5 rounded bg-saffron-500 text-white font-bold">YOU</span>}
+                          </div>
+                          <div className="text-[11px] opacity-70">
+                            Level {item.level} • {item.country}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-base sm:text-lg font-black font-space text-saffron-500">
+                          {item.xp.toLocaleString()} XP
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          {Math.floor(item.xp / XP_PER_LEVEL)} Levels
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: STARRED WORDS */}
+        {activeTab === 'starred' && (
+          <div className={`rounded-3xl p-6 sm:p-8 border ${
+            darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+          } space-y-4`}>
+            <h3 className="font-bold text-base">⭐ Starred Vocabulary ({starredList.length})</h3>
+            {starredList.length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-10 text-center">
+                You haven't bookmarked any words yet. Star words in the lessons to study them here!
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {starredList.map(item => (
                   <div
-                    key={i}
-                    className={`rounded-2xl p-5 border ${
-                      darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'
+                    key={`${item.lessonId}-${item.wordIdx}`}
+                    className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
+                      darkMode ? 'bg-slate-950 border-slate-800 hover:bg-slate-800/30' : 'bg-slate-50 border-slate-200 hover:bg-slate-100/60 shadow-sm'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-2xl">{stat.icon}</span>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                        darkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
-                      }`}>{stat.sub}</span>
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <h4 className="text-xl font-bold font-sans text-slate-900 dark:text-white" lang="si">
+                          {item.sinhala}
+                        </h4>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); speak(item.sinhala, item.romanized); }}
+                          className="text-xs p-1.5 rounded-lg hover:bg-slate-700/20 text-saffron-500"
+                          aria-label="Speak pronunciation"
+                        >
+                          🔊
+                        </button>
+                      </div>
+                      <p className="text-xs font-semibold text-saffron-500">{item.english}</p>
+                      <p className="text-[10px] text-slate-400 italic">[{item.romanized}]</p>
                     </div>
-                    <p className={`text-4xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
-                      {stat.value}
-                    </p>
-                    <p className={`text-xs mt-1 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{stat.label}</p>
+                    
+                    <button
+                      onClick={() => onToggleStarWord(item.lessonId, item.wordIdx)}
+                      className="p-2 rounded-xl text-saffron-500 hover:bg-saffron-500/10 transition-colors"
+                      aria-label="Remove Bookmark"
+                    >
+                      ★
+                    </button>
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        )}
 
-              {/* XP Progress + Daily Goal */}
-              <div className="grid sm:grid-cols-2 gap-4">
-                {/* Level progress */}
-                <div className={`rounded-2xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
-                  <h3 className="font-bold text-sm mb-4">Level Progress</h3>
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg text-white font-bold text-xl">
-                      {level}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold">Level {level}</span>
-                        <span className="text-xs text-slate-500">{xp % XP_PER_LEVEL}/{XP_PER_LEVEL} XP</span>
-                      </div>
-                      <div role="progressbar" aria-valuenow={xpProgress} aria-valuemin={0} aria-valuemax={100} aria-label="Level progress" className={`h-2.5 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                        <div className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-700 xp-bar-glow" style={{ width: `${xpProgress}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                  <p className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                    {XP_PER_LEVEL - (xp % XP_PER_LEVEL)} XP to Level {level + 1}
-                  </p>
-                </div>
-
-                {/* Daily goal */}
-                <div className={`rounded-2xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
-                  <h3 className="font-bold text-sm mb-4">🎯 Daily Goal</h3>
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="relative w-24 h-24">
-                      <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100" role="progressbar" aria-valuenow={Math.round(dailyProgress)} aria-valuemin={0} aria-valuemax={100} aria-label="Daily goal progress">
-                        <circle cx="50" cy="50" r="42" fill="none" strokeWidth="8" className={darkMode ? 'stroke-slate-800' : 'stroke-slate-100'} />
-                        <circle
-                          cx="50" cy="50" r="42" fill="none" strokeWidth="8"
-                          className="stroke-amber-500 transition-all duration-700"
-                          strokeLinecap="round"
-                          strokeDasharray={`${2 * Math.PI * 42}`}
-                          strokeDashoffset={`${2 * Math.PI * 42 * (1 - dailyProgress / 100)}`}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-xl font-bold">{dailyXp}</span>
-                        <span className="text-[10px] text-slate-500">/{dailyGoal} XP</span>
-                      </div>
-                    </div>
-                  </div>
-                  <p className={`text-center text-xs ${
-                    dailyProgress >= 100
-                      ? 'text-emerald-500 font-semibold'
-                      : darkMode ? 'text-slate-500' : 'text-slate-400'
-                  }`}>
-                    {dailyProgress >= 100 ? '🎉 Goal completed!' : `${Math.round(dailyProgress)}% complete`}
-                  </p>
-                </div>
-              </div>
-
-              {/* Lesson breakdown */}
-              <div className={`rounded-2xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
-                <h3 className="font-bold text-sm mb-5">📚 Lesson Progress</h3>
-                <div className="space-y-4">
-                  {lessons.map(lesson => {
-                    const learned = wordsLearned[lesson.id]?.length || 0;
-                    const total = lesson.words.length;
-                    const pct = Math.round((learned / total) * 100);
-                    return (
-                      <div key={lesson.id} className="flex items-center gap-4">
-                        <span className="text-xl w-8 text-center">{lesson.icon}</span>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-semibold">{lesson.title}</span>
-                            <span className="text-[10px] text-slate-500">{learned}/{total}</span>
-                          </div>
-                          <div role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${lesson.title} progress`} className={`h-2 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                            <div className={`h-full rounded-full bg-gradient-to-r ${lesson.color} transition-all duration-500`} style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                        {pct === 100 && <span className="text-emerald-500 text-xs font-bold">✓</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Achievements */}
-              <div className={`rounded-2xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
-                <div className="flex items-center justify-between mb-5">
-                  <h3 className="font-bold text-sm">🏆 Achievements</h3>
-                  <span className="text-xs text-slate-500">
-                    {achievements.length}/{ALL_ACHIEVEMENTS.length} unlocked
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {ALL_ACHIEVEMENTS.map(ach => {
-                    const unlocked = achievements.includes(ach.id);
-                    return (
-                      <div
-                        key={ach.id}
-                        className={`rounded-2xl p-4 text-center border transition-all duration-300 ${
-                          unlocked
-                            ? darkMode
-                              ? 'bg-amber-900/20 border-amber-700/30'
-                              : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200 shadow-sm'
-                            : darkMode
-                              ? 'bg-slate-800/50 border-slate-700/50 opacity-50'
-                              : 'bg-slate-50 border-slate-200 opacity-40'
-                        }`}
-                      >
-                        <span className={`text-2xl block mb-1.5 ${unlocked ? '' : 'grayscale'}`}>{ach.icon}</span>
-                        <p className={`text-xs font-bold mb-0.5 ${
-                          unlocked
-                            ? darkMode ? 'text-amber-400' : 'text-amber-700'
-                            : darkMode ? 'text-slate-500' : 'text-slate-400'
-                        }`}>{ach.title}</p>
-                        <p className="text-[9px] text-slate-400 leading-snug">{ach.description}</p>
-                        {unlocked && <span className="text-[9px] text-emerald-500 font-bold mt-1 block">✓ Unlocked</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Share Progress Button (#48) */}
-                {'share' in navigator && (
-                  <button
-                    onClick={() => {
-                      const shareText = `🇱🇰 I'm learning Sinhala! Level ${level} with ${xp} XP, ${totalWordsLearned} words learned, and ${achievements.length} achievements unlocked on සිංහල පුළුවන්ද? 🎉`;
-                      navigator.share?.({
-                        title: 'සිංහල පුළුවන්ද? — My Progress',
-                        text: shareText,
-                        url: window.location.href,
-                      }).catch(() => {});
-                    }}
-                    className="mt-4 w-full py-3 rounded-2xl border font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-saffron-500 to-saffron-600 text-white border-saffron-500/50 shadow-lg shadow-saffron-500/10"
-                  >
-                    📤 Share My Progress
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: STARRED WORDS */}
-          {activeTab === 'starred' && (
-            <div className={`rounded-2xl p-6 border ${
+        {/* TAB 4: SETTINGS, PROFILE & RESET */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            {/* Profile Customization Section */}
+            <div className={`rounded-3xl p-6 sm:p-8 border ${
               darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
             } space-y-4`}>
-              <h3 className="font-bold text-sm">⭐ Starred Vocabulary</h3>
-              {starredList.length === 0 ? (
-                <p className="text-xs text-slate-400 italic py-6 text-center">
-                  You haven't bookmarked any words yet. Star words in the lessons to study them here!
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {starredList.map(item => (
-                    <div
-                      key={`${item.lessonId}-${item.wordIdx}`}
-                      className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
-                        darkMode ? 'bg-slate-950 border-slate-800 hover:bg-slate-800/30' : 'bg-slate-50 border-slate-200 hover:bg-slate-100/60 shadow-sm'
-                      }`}
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <h4 className="text-xl font-bold font-sans text-slate-900 dark:text-white" lang="si">
-                            {item.sinhala}
-                          </h4>
-                          <button
-                            onClick={(e) => handlePlayWordSound(e, item.sinhala)}
-                            className="text-xs p-1 rounded hover:bg-slate-700/20 text-slate-400 hover:text-amber-500"
-                            aria-label="Speak pronunciation"
-                          >
-                            🔊
-                          </button>
-                        </div>
-                        <p className="text-xs font-semibold text-amber-500">{item.english}</p>
-                        <p className="text-[10px] text-slate-400 italic">[{item.romanized}]</p>
-                      </div>
-                      
-                      <button
-                        onClick={() => onToggleStarWord(item.lessonId, item.wordIdx)}
-                        className="p-2 rounded-xl text-amber-500 hover:bg-amber-500/10 transition-colors"
-                        aria-label="Remove Bookmark"
-                      >
-                        ★
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <h3 className="font-bold text-base">👤 Custom Profile Settings</h3>
+              <p className="text-xs text-slate-400">
+                Personalize your display name, choose your favorite avatar, and adjust your daily study goals.
+              </p>
+              <button
+                onClick={() => setIsEditProfileOpen(true)}
+                className="px-5 py-3 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg shadow-saffron-500/20 hover:scale-105 active:scale-95 transition-all"
+              >
+                ✏️ Edit Name, Avatar & Goals
+              </button>
             </div>
-          )}
 
-          {/* TAB 3: SETTINGS & BACKUP */}
-          {activeTab === 'settings' && (
-            <div className={`rounded-2xl p-6 border ${
+            {/* Backup & Restore */}
+            <div className={`rounded-3xl p-6 sm:p-8 border ${
               darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
             } space-y-6`}>
               <div>
-                <h3 className="font-bold text-sm mb-1">⚙️ Progress Backup & Restore</h3>
+                <h3 className="font-bold text-base mb-1">💾 Progress Backup & Cloud Sync</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Export your current XP, level, learned words, and achievements to a progress backup file, or upload a backup to restore your data on this or another browser/device.
+                  Export your current progress or transfer your level, achievements, and learned words to another device.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                {/* Export panel */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className={`p-5 rounded-2xl border flex flex-col justify-between space-y-4 ${
                   darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
                 }`}>
                   <div>
                     <h4 className="text-xs font-bold uppercase tracking-wider mb-1">Export Backup</h4>
                     <p className="text-[11px] text-slate-400">
-                      Saves your complete learning profile as a JSON file to your device.
+                      Saves your complete learning profile as a JSON file.
                     </p>
                   </div>
                   <button
                     onClick={handleExport}
-                    className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-bold rounded-xl text-xs active:scale-95 transition-all shadow-md shadow-amber-500/10"
+                    className="w-full py-2.5 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold rounded-xl text-xs active:scale-95 transition-all shadow-md shadow-saffron-500/10"
                   >
                     💾 Download Progress Backup
                   </button>
                 </div>
 
-                {/* Import panel */}
                 <div className={`p-5 rounded-2xl border flex flex-col justify-between space-y-4 ${
                   darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
                 }`}>
                   <div>
                     <h4 className="text-xs font-bold uppercase tracking-wider mb-1">Restore Backup</h4>
-                    <p className="text-[11px] text-slate-400 text-rose-400 font-medium">
-                      ⚠️ Warning: Restoring progress will overwrite your current progress state.
+                    <p className="text-[11px] text-slate-400">
+                      Upload a previous JSON backup to restore your data.
                     </p>
                   </div>
                   <div className="relative">
@@ -628,9 +639,7 @@ export default function Dashboard({
                     />
                     <button
                       className={`w-full py-2.5 font-bold rounded-xl text-xs text-center border transition-all pointer-events-none ${
-                        darkMode
-                          ? 'bg-slate-900 border-slate-800 text-slate-300'
-                          : 'bg-white border-slate-300 text-slate-700 shadow-sm'
+                        darkMode ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-700 shadow-sm'
                       }`}
                     >
                       📤 Upload backup (.json)
@@ -639,10 +648,163 @@ export default function Dashboard({
                 </div>
               </div>
             </div>
-          )}
-        </div>
+
+            {/* DANGER ZONE: Reset Level & Progress */}
+            <div className={`rounded-3xl p-6 sm:p-8 border border-rose-500/30 ${
+              darkMode ? 'bg-rose-950/10' : 'bg-rose-50/50'
+            } space-y-4`}>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">⚠️</span>
+                <h3 className="font-bold text-base text-rose-500">Danger Zone — Reset Progress</h3>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                If you wish to restart your learning journey from the beginning, you can reset your Level back to 1, XP to 0, and clear learned lessons.
+              </p>
+              <button
+                onClick={() => setIsResetConfirmOpen(true)}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-600/20 active:scale-95 transition-all"
+              >
+                🔄 Reset Level & All Progress
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditProfileOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className={`w-full max-w-md rounded-3xl p-6 sm:p-8 border shadow-2xl ${
+            darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <h2 className="text-xl font-bold font-space mb-4 flex items-center gap-2">
+              <span>✏️</span> Edit Learner Profile
+            </h2>
+
+            <form onSubmit={handleSaveProfile} className="space-y-5">
+              {/* Name input */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-400">
+                  Your Display Name
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Enter your name..."
+                  className={`w-full px-4 py-3 rounded-xl border text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-saffron-500 ${
+                    darkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                  maxLength={30}
+                  required
+                />
+              </div>
+
+              {/* Avatar Picker */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-400">
+                  Select Profile Avatar ({PROFILE_AVATARS.length} Options)
+                </label>
+                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
+                  {PROFILE_AVATARS.map(av => (
+                    <button
+                      key={av.name}
+                      type="button"
+                      onClick={() => setSelectedAvatar(av.emoji)}
+                      className={`p-2.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all ${
+                        selectedAvatar === av.emoji
+                          ? 'bg-saffron-500/20 border-2 border-saffron-500 scale-105 shadow-md'
+                          : darkMode
+                          ? 'bg-slate-950 border border-slate-800 hover:bg-slate-800'
+                          : 'bg-slate-50 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                      title={av.name}
+                    >
+                      <span className="text-2xl mb-1">{av.emoji}</span>
+                      <span className="text-[9px] font-semibold truncate w-full">{av.tag}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Daily Goal Picker */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-400">
+                  Daily XP Goal
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[25, 50, 100, 200].map(g => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setCustomGoal(g)}
+                      className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                        customGoal === g
+                          ? 'bg-saffron-500 text-white border-saffron-500'
+                          : darkMode
+                          ? 'bg-slate-950 border-slate-800 text-slate-300'
+                          : 'bg-slate-50 border-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {g} XP
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-700/20">
+                <button
+                  type="button"
+                  onClick={() => setIsEditProfileOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-saffron-500/20 hover:scale-105 active:scale-95 transition-all"
+                >
+                  Save Profile
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Confirmation Modal */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className={`w-full max-w-md rounded-3xl p-6 sm:p-8 border border-rose-500/30 shadow-2xl ${
+            darkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'
+          }`}>
+            <div className="text-center mb-6">
+              <span className="text-4xl block mb-3">🔄</span>
+              <h2 className="text-xl font-bold font-space text-rose-500 mb-2">Reset Progress & Level?</h2>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                This will reset your XP back to 0, Level back to 1, clear all learned words, quizzes, and streaks. This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="px-5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExecuteReset}
+                className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/30 active:scale-95 transition-all"
+              >
+                Yes, Reset Everything
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

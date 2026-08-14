@@ -42,6 +42,7 @@ export interface GameState {
   starredWords: Record<number, number[]>;
   srsData: Record<string, SRSInfo>;
   avatar: string;
+  userName: string;
   completedGrammarQuizzes: string[];
 }
 
@@ -62,7 +63,8 @@ const DEFAULT_STATE: GameState = {
   dailyGoalDate: '',
   starredWords: {},
   srsData: {},
-  avatar: 'novice',
+  avatar: '🦁',
+  userName: 'Learner',
   completedGrammarQuizzes: [],
 };
 
@@ -129,7 +131,8 @@ export function useGameState() {
     // Schema safety migrations:
     if (!s.starredWords) s.starredWords = {};
     if (!s.srsData) s.srsData = {};
-    if (!s.avatar) s.avatar = 'novice';
+    if (!s.avatar || s.avatar === 'novice') s.avatar = '🦁';
+    if (!s.userName) s.userName = 'Learner';
     if (!s.completedGrammarQuizzes) s.completedGrammarQuizzes = [];
 
     if (s.dailyGoalDate !== today) {
@@ -155,6 +158,7 @@ export function useGameState() {
       !state.starredWords ||
       !state.srsData ||
       !state.avatar ||
+      !state.userName ||
       !state.completedGrammarQuizzes
     ) {
       setState(checkedState);
@@ -503,6 +507,31 @@ export function useGameState() {
     });
   }, [setState]);
 
+  const updateProfile = useCallback((name: string, newAvatar: string) => {
+    setState(prev => ({
+      ...prev,
+      userName: name.trim() || prev.userName || 'Learner',
+      avatar: newAvatar || prev.avatar || '🦁'
+    }));
+  }, [setState]);
+
+  const resetProgress = useCallback(() => {
+    setState(prev => ({
+      ...DEFAULT_STATE,
+      userName: prev.userName || 'Learner',
+      avatar: prev.avatar || '🦁',
+      darkMode: prev.darkMode,
+      soundEnabled: prev.soundEnabled,
+    }));
+  }, [setState]);
+
+  const setDailyGoal = useCallback((newGoal: number) => {
+    setState(prev => ({
+      ...prev,
+      dailyGoal: Math.max(10, newGoal)
+    }));
+  }, [setState]);
+
   const toggleSound = useCallback(() => {
     setState(prev => ({ ...prev, soundEnabled: !prev.soundEnabled }));
   }, [setState]);
@@ -527,6 +556,9 @@ export function useGameState() {
     reviewSRSWord,
     completeGrammarQuiz,
     changeAvatar,
+    updateProfile,
+    resetProgress,
+    setDailyGoal,
     importProgressState,
     toggleDarkMode,
     toggleSound,

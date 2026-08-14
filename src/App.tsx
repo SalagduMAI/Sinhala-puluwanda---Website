@@ -2,8 +2,10 @@ import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useGame } from './contexts/GameContext';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
+import AlphabetSection from './components/AlphabetSection';
 import LessonsSection from './components/LessonsSection';
 import PracticeSection from './components/PracticeSection';
+import PhraseBuilder from './components/PhraseBuilder';
 import AboutSection from './components/AboutSection';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
@@ -12,9 +14,7 @@ import OnboardingModal from './components/OnboardingModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Lesson, lessons } from './data/lessons';
 
-// Lazy load heavy components and subviews
-const AlphabetSection = lazy(() => import('./components/AlphabetSection'));
-const PhraseBuilder = lazy(() => import('./components/PhraseBuilder'));
+// Lazy load heavy modal subviews
 const GrammarSection = lazy(() => import('./components/GrammarSection').then(m => ({ default: m.GrammarSection })));
 const Chatbot = lazy(() => import('./components/Chatbot'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -61,8 +61,8 @@ export default function App() {
 
   const {
     state, learnWord, recordQuiz, unlockMatchAchievement,
-    toggleStarWord, reviewSRSWord, changeAvatar, importProgressState,
-    toggleDarkMode, totalWordsLearned, xpProgress, addXP
+    toggleStarWord, reviewSRSWord, changeAvatar, updateProfile, resetProgress, setDailyGoal,
+    importProgressState, toggleDarkMode, totalWordsLearned, xpProgress, addXP
   } = useGame();
 
   const darkMode = state.darkMode;
@@ -284,10 +284,14 @@ export default function App() {
                 wordsLearned={state.wordsLearned}
                 dailyXp={state.dailyXpEarned} dailyGoal={state.dailyGoal}
                 starredWords={state.starredWords || {}} srsData={state.srsData || {}}
-                avatar={state.avatar || 'novice'}
+                avatar={state.avatar || '🦁'}
+                userName={state.userName || 'Learner'}
                 onBack={() => { window.location.hash = '#/'; window.scrollTo(0, 0); }}
                 onToggleStarWord={toggleStarWord}
                 onChangeAvatar={changeAvatar}
+                onUpdateProfile={updateProfile}
+                onResetProgress={resetProgress}
+                onSetDailyGoal={setDailyGoal}
                 onImportState={importProgressState}
               />
             </Suspense>
@@ -393,9 +397,7 @@ export default function App() {
         return (
           <>
             <Hero onStart={handleStart} totalWords={totalWordsLearned} level={state.level} streak={state.streak} />
-            <Suspense fallback={<LoadingFallback />}>
-              <AlphabetSection darkMode={darkMode} soundEnabled={state.soundEnabled} />
-            </Suspense>
+            <AlphabetSection darkMode={darkMode} soundEnabled={state.soundEnabled} />
             <LessonsSection onSelectLesson={handleSelectLesson} progress={state.wordsLearned} darkMode={darkMode} />
             <PracticeSection darkMode={darkMode} level={state.level}
               onOpenGame={() => { window.location.hash = '#/match-game'; window.scrollTo(0, 0); }}
@@ -410,9 +412,7 @@ export default function App() {
                 }
               }}
             />
-            <Suspense fallback={<LoadingFallback />}>
-              <PhraseBuilder darkMode={darkMode} soundEnabled={state.soundEnabled} />
-            </Suspense>
+            <PhraseBuilder darkMode={darkMode} soundEnabled={state.soundEnabled} />
             <AboutSection darkMode={darkMode} />
             <ContactSection darkMode={darkMode} />
           </>

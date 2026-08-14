@@ -45,7 +45,8 @@ describe('useGameState()', () => {
     expect(result.current.state.achievements).toEqual([]);
     expect(result.current.totalWordsLearned).toBe(0);
     expect(result.current.xpProgress).toBe(0);
-    expect(result.current.state.avatar).toBe('novice');
+    expect(result.current.state.avatar).toBe('🦁');
+    expect(result.current.state.userName).toBe('Learner');
     
     unmount();
   });
@@ -171,6 +172,30 @@ describe('useGameState()', () => {
       importFail = result.current.importProgressState({ corrupt: 'data' });
     });
     expect(importFail).toBe(false);
+
+    unmount();
+  });
+
+  it('should update user profile and allow resetting progress', () => {
+    const { result, unmount } = renderHook(() => useGameState());
+
+    act(() => {
+      result.current.addXP(300);
+      result.current.updateProfile('Kasun', '🐘');
+    });
+
+    expect(result.current.state.userName).toBe('Kasun');
+    expect(result.current.state.avatar).toBe('🐘');
+    expect(result.current.state.xp).toBe(300);
+
+    act(() => {
+      result.current.resetProgress();
+    });
+
+    expect(result.current.state.xp).toBe(0);
+    expect(result.current.state.level).toBe(1);
+    expect(result.current.state.userName).toBe('Kasun'); // maintains identity
+    expect(result.current.state.avatar).toBe('🐘');
 
     unmount();
   });
