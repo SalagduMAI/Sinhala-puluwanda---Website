@@ -14,14 +14,15 @@ import OnboardingModal from './components/OnboardingModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Lesson, lessons } from './data/lessons';
 
+import LessonView from './components/LessonView';
+import QuizView from './components/QuizView';
+
 // Lazy load heavy modal subviews
 const GrammarSection = lazy(() => import('./components/GrammarSection').then(m => ({ default: m.GrammarSection })));
 const Chatbot = lazy(() => import('./components/Chatbot'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const WordMatchGame = lazy(() => import('./components/WordMatchGame'));
 const ConversationView = lazy(() => import('./components/ConversationView'));
-const LessonView = lazy(() => import('./components/LessonView'));
-const QuizView = lazy(() => import('./components/QuizView'));
 const WritingPractice = lazy(() => import('./components/WritingPractice'));
 const FlashcardReview = lazy(() => import('./components/FlashcardReview'));
 
@@ -325,16 +326,14 @@ export default function App() {
         if (!selectedLesson) return <LoadingFallback />;
         return (
           <ErrorBoundary>
-            <Suspense fallback={<LoadingFallback />}>
-              <LessonView
-                lesson={selectedLesson} darkMode={darkMode} soundEnabled={state.soundEnabled}
-                onBack={handleBack} onStartQuiz={handleStartQuiz}
-                onWordLearned={handleWordLearned}
-                learnedWords={state.wordsLearned[selectedLesson.id] || []}
-                starredWords={state.starredWords || {}}
-                onToggleStarWord={toggleStarWord}
-              />
-            </Suspense>
+            <LessonView
+              lesson={selectedLesson} darkMode={darkMode} soundEnabled={state.soundEnabled}
+              onBack={handleBack} onStartQuiz={handleStartQuiz}
+              onWordLearned={handleWordLearned}
+              learnedWords={state.wordsLearned[selectedLesson.id] || []}
+              starredWords={state.starredWords || {}}
+              onToggleStarWord={toggleStarWord}
+            />
           </ErrorBoundary>
         );
 
@@ -342,12 +341,10 @@ export default function App() {
         if (!selectedLesson) return <LoadingFallback />;
         return (
           <ErrorBoundary>
-            <Suspense fallback={<LoadingFallback />}>
-              <QuizView lesson={selectedLesson} darkMode={darkMode}
-                onBack={() => { window.location.hash = `#/lesson/${selectedLesson.id}`; window.scrollTo(0, 0); }}
-                onComplete={handleQuizComplete}
-              />
-            </Suspense>
+            <QuizView lesson={selectedLesson} darkMode={darkMode}
+              onBack={() => { window.location.hash = `#/lesson/${selectedLesson.id}`; window.scrollTo(0, 0); }}
+              onComplete={handleQuizComplete}
+            />
           </ErrorBoundary>
         );
 
