@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { lessons } from '../data/lessons';
 import { useSpeech } from '../hooks/useSpeech';
+import { useSoundFX } from '../hooks/useSoundFX';
 
 interface FlashcardReviewProps {
   darkMode: boolean;
@@ -29,6 +30,7 @@ export default function FlashcardReview({
   const [sessionCount, setSessionCount] = useState(0);
 
   const { speak, isSupported } = useSpeech();
+  const { playCardFlip, playCorrect, playIncorrect, playLevelUp } = useSoundFX(soundEnabled);
 
   // Get all learned words with details
   const learnedWords = useMemo(() => {
@@ -92,12 +94,19 @@ export default function FlashcardReview({
   const isTransitioningRef = useRef(false);
 
   const handleFlip = useCallback(() => {
+    playCardFlip();
     setIsFlipped(prev => !prev);
-  }, []);
+  }, [playCardFlip]);
 
   const handleRate = useCallback((rating: number) => {
     if (!currentCard || isTransitioningRef.current) return;
     isTransitioningRef.current = true;
+
+    if (rating >= 3) {
+      playCorrect();
+    } else {
+      playIncorrect();
+    }
 
     // Call state updater for SM-2
     onReviewWord(currentCard.lessonId, currentCard.wordIdx, rating);
@@ -117,11 +126,12 @@ export default function FlashcardReview({
         setCurrentIndex(prev => prev + 1);
       } else {
         // End of pool reached
+        playLevelUp();
         setCurrentIndex(poolSnapshotRef.current.length);
       }
       isTransitioningRef.current = false;
     }, 300);
-  }, [currentCard, currentIndex, onAwardXP, onReviewWord]);
+  }, [currentCard, currentIndex, onAwardXP, onReviewWord, playCorrect, playIncorrect, playLevelUp]);
 
   const handlePlaySound = useCallback((e?: React.SyntheticEvent) => {
     if (e) e.stopPropagation();

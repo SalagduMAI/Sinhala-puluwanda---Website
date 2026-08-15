@@ -5,6 +5,9 @@ import App from "./App";
 import { GameProvider } from "./contexts/GameContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { registerServiceWorker } from "./registerServiceWorker";
+
+registerServiceWorker();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {

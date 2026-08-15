@@ -16,6 +16,11 @@ export interface Lesson {
   bgPattern: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   words: Word[];
+  culturalTip?: {
+    title: string;
+    description: string;
+    icon: string;
+  };
 }
 
 export interface QuizQuestion {
@@ -109,6 +114,11 @@ export const lessons: Lesson[] = [
     color: 'from-saffron-400 to-saffron-600',
     bgPattern: 'radial-gradient(circle at 20% 80%, rgba(255,157,7,0.12) 0%, transparent 50%)',
     difficulty: 'beginner',
+    culturalTip: {
+      title: 'The "Ayubowan" Greeting & Palm Gesture',
+      description: 'Place both palms together at chest level with a gentle bow while saying "Ayubowan" (May you live long). It expresses genuine warmth, respect, and peace throughout Sri Lanka.',
+      icon: '🙏'
+    },
     words: [
       { sinhala: 'ආයුබෝවන්', transliteration: 'āyubōvan', english: 'Hello', example: 'ආයුබෝවන්! කොහොමද?', exampleTranslation: 'Hello! How are you?' },
       { sinhala: 'ඔව්', transliteration: 'ov', english: 'Yes', example: 'ඔව්, මම එනවා', exampleTranslation: 'Yes, I am coming' },
@@ -133,6 +143,11 @@ export const lessons: Lesson[] = [
     color: 'from-emerald-400 to-emerald-600',
     bgPattern: 'radial-gradient(circle at 80% 20%, rgba(16,185,129,0.12) 0%, transparent 50%)',
     difficulty: 'beginner',
+    culturalTip: {
+      title: 'Eating by Hand & Spicy Levels',
+      description: 'Sri Lankans traditionally eat rice and curry with their right hand to blend textures and aromas. If you have lower heat tolerance, always ask for "Miris aduwen" (less spicy) with a smile!',
+      icon: '🍛'
+    },
     words: [
       { sinhala: 'කෑම ලැයිස්තුව', transliteration: 'kǣma læyisthuva', english: 'Menu', example: 'කෑම ලැයිස්තුව දෙන්න', exampleTranslation: 'Give me the menu' },
       { sinhala: 'බත් සහ කරි', transliteration: 'bath saha kari', english: 'Rice and curry', example: 'මට බත් සහ කරි දෙන්න', exampleTranslation: 'Give me rice and curry' },
@@ -157,6 +172,11 @@ export const lessons: Lesson[] = [
     color: 'from-blue-400 to-blue-600',
     bgPattern: 'radial-gradient(circle at 50% 80%, rgba(59,130,246,0.12) 0%, transparent 50%)',
     difficulty: 'beginner',
+    culturalTip: {
+      title: 'Tuk-Tuk Etiquette & Meter Taxis',
+      description: 'In Colombo and suburban areas, look for "Meter Taxi" signs and politely say "Meter eka daanna" (Please put the meter). In rural or tourist coastal towns, agree on the exact fare before boarding.',
+      icon: '🚕'
+    },
     words: [
       { sinhala: 'කොහේද?', transliteration: 'kohēda?', english: 'Where?', example: 'බස් නැවතුම්පොළ කොහේද?', exampleTranslation: 'Where is the bus stop?' },
       { sinhala: 'ඉදිරියට යන්න', transliteration: 'idiriyaṭa yanna', english: 'Go straight', example: 'ඉදිරියට යන්න, ඊට පස්සේ වමට', exampleTranslation: 'Go straight, then turn left' },
@@ -181,6 +201,11 @@ export const lessons: Lesson[] = [
     color: 'from-pink-400 to-rose-600',
     bgPattern: 'radial-gradient(circle at 20% 20%, rgba(244,114,182,0.12) 0%, transparent 50%)',
     difficulty: 'intermediate',
+    culturalTip: {
+      title: 'Bargaining Etiquette with a Smile',
+      description: 'Bargaining is common in street stalls and craft markets, but not in supermarkets or shopping malls. Keep discussions friendly, smile, and use "Adu karanna puluwanda?" (Can you reduce it a bit?).',
+      icon: '🛍️'
+    },
     words: [
       { sinhala: 'මේක කීයද?', transliteration: 'mēka kīyada?', english: 'How much is this?', example: 'මේ ටී ෂර්ට් එක කීයද?', exampleTranslation: 'How much is this T-shirt?' },
       { sinhala: 'ගොඩක් වැඩියි', transliteration: 'goḍak vædiyi', english: 'Too expensive', example: 'නැහැ, ගොඩක් වැඩියි!', exampleTranslation: 'No, too expensive!' },
@@ -205,6 +230,11 @@ export const lessons: Lesson[] = [
     color: 'from-red-400 to-red-600',
     bgPattern: 'radial-gradient(circle at 80% 80%, rgba(239,68,68,0.12) 0%, transparent 50%)',
     difficulty: 'intermediate',
+    culturalTip: {
+      title: 'Nationwide Free Emergency 1990',
+      description: 'Sri Lanka has one of the world\'s best free emergency medical services: "1990 Suwa Seriya Ambulance". Simply dial 1990 from any phone for instant paramedic dispatch.',
+      icon: '🚨'
+    },
     words: [
       { sinhala: 'මට උදව් කරන්න!', transliteration: 'maṭa udav karanna!', english: 'Help me!', example: 'කරුණාකරලා මට උදව් කරන්න!', exampleTranslation: 'Please help me!' },
       { sinhala: 'මම අසනීපයි', transliteration: 'mama asanīpayi', english: 'I am sick', example: 'මම ගොඩක් අසනීපයි', exampleTranslation: 'I am very sick' },
@@ -229,6 +259,11 @@ export const lessons: Lesson[] = [
     color: 'from-purple-400 to-purple-600',
     bgPattern: 'radial-gradient(circle at 30% 40%, rgba(147,51,234,0.12) 0%, transparent 50%)',
     difficulty: 'intermediate',
+    culturalTip: {
+      title: 'Respectful Terms of Address',
+      description: 'Sri Lankans warmly refer to strangers as family: "Aiya" (older brother), "Akka" (older sister), "Uncle", or "Aunty". It conveys deep respect and immediate community belonging.',
+      icon: '🤗'
+    },
     words: [
       { sinhala: 'ඔයාගේ නම මොකද?', transliteration: 'oyāgē nama mokada?', english: 'What is your name?', example: 'ආයුබෝවන්! ඔයාගේ නම මොකද?', exampleTranslation: 'Hello! What is your name?' },
       { sinhala: 'ඔබව දැකීම සතුටක්', transliteration: 'obava dækīma sathutakǃ', english: 'Nice to meet you', example: 'ආයුබෝවන්, ඔබව දැකීම සතුටක්!', exampleTranslation: 'Hello, nice to meet you!' },
@@ -253,6 +288,11 @@ export const lessons: Lesson[] = [
     color: 'from-cyan-400 to-teal-600',
     bgPattern: 'radial-gradient(circle at 80% 40%, rgba(6,182,212,0.12) 0%, transparent 50%)',
     difficulty: 'advanced',
+    culturalTip: {
+      title: 'Sri Lankan Island Hospitality',
+      description: 'Hotels and guesthouses often greet guests with a fresh King Coconut (Thambili) or hot Ceylon tea. Tipping housekeeping and luggage staff 200-500 LKR is customary and appreciated.',
+      icon: '🥥'
+    },
     words: [
       { sinhala: 'මට වෙන්කිරීමක් තියෙනවා', transliteration: 'maṭa venkiriimak thiyenavā', english: 'I have a reservation', example: 'ආයුබෝවන්, මට වෙන්කිරීමක් තියෙනවා', exampleTranslation: 'Hello, I have a reservation' },
       { sinhala: 'කාමරය', transliteration: 'kāmaraya', english: 'Room', example: 'මගේ කාමරය කීවෙනි මහලේද?', exampleTranslation: 'What floor is my room on?' },
@@ -277,6 +317,11 @@ export const lessons: Lesson[] = [
     color: 'from-amber-400 to-orange-600',
     bgPattern: 'radial-gradient(circle at 50% 50%, rgba(245,158,11,0.12) 0%, transparent 50%)',
     difficulty: 'advanced',
+    culturalTip: {
+      title: 'The Famous "Head Bobble"',
+      description: 'A gentle side-to-side head tilt in Sri Lanka means "Yes", "OK", "Understood", or "Good". It is a friendly non-verbal agreement that you will see everywhere!',
+      icon: '😊'
+    },
     words: [
       { sinhala: 'මම වැඩ කරනවා', transliteration: 'mama væḍa karanavā', english: 'I work / I am working', example: 'මම IT සමාගමක වැඩ කරනවා', exampleTranslation: 'I work at an IT company' },
       { sinhala: 'මගේ රැකියාව', transliteration: 'magē rækiyāva', english: 'My job/occupation', example: 'මගේ රැකියාව ඉංජිනේරු', exampleTranslation: 'My job is engineer' },
@@ -301,6 +346,11 @@ export const lessons: Lesson[] = [
     color: 'from-indigo-400 to-indigo-600',
     bgPattern: 'radial-gradient(circle at 60% 30%, rgba(99,102,241,0.12) 0%, transparent 50%)',
     difficulty: 'intermediate',
+    culturalTip: {
+      title: 'Sacred Temple Dress Code & Conduct',
+      description: 'When entering Buddhist temples or Hindu Kovils, remove shoes and hats, ensure shoulders and knees are covered (white or light-colored attire is preferred), and never pose with your back turned to Buddha statues.',
+      icon: '🛕'
+    },
     words: [
       { sinhala: 'පන්සල', transliteration: 'pansala', english: 'Buddhist temple', example: 'අපි පන්සලට යමු', exampleTranslation: 'Let\'s go to the temple' },
       { sinhala: 'මුහුදු වෙරළ', transliteration: 'muhudu veraḷa', english: 'Beach', example: 'මුහුදු වෙරළ ලස්සනයි', exampleTranslation: 'The beach is beautiful' },
@@ -325,6 +375,11 @@ export const lessons: Lesson[] = [
     color: 'from-fuchsia-400 to-pink-600',
     bgPattern: 'radial-gradient(circle at 40% 70%, rgba(217,70,239,0.12) 0%, transparent 50%)',
     difficulty: 'advanced',
+    culturalTip: {
+      title: 'The Art of "Kamak Næhæ" (No Problem)',
+      description: '"Kamak Næhæ" captures the easygoing, forgiving island spirit. When small misunderstandings happen, a quick smile and "Kamak Næhæ" immediately dissolves all stress!',
+      icon: '🌸'
+    },
     words: [
       { sinhala: 'මට සතුටුයි', transliteration: 'maṭa sathutui', english: 'I am happy', example: 'ඔයාව දැක්කම මට සතුටුයි', exampleTranslation: 'I am happy to see you' },
       { sinhala: 'මට දුකයි', transliteration: 'maṭa dukayi', english: 'I am sad', example: 'ගිහින් එන්නම් කියද්දි මට දුකයි', exampleTranslation: 'I am sad when you say goodbye' },
@@ -349,6 +404,11 @@ export const lessons: Lesson[] = [
     color: 'from-sky-400 to-blue-600',
     bgPattern: 'radial-gradient(circle at 70% 20%, rgba(14,165,233,0.12) 0%, transparent 50%)',
     difficulty: 'advanced',
+    culturalTip: {
+      title: 'Mobile Coverage & Tourist SIMs',
+      description: 'Dialog, Mobitel, and Airtel have kiosks at Colombo Airport (BIA) arrival lobby. Data packages in Sri Lanka are very affordable (~$5-10 USD for 30-50GB) and coverage is excellent across the island.',
+      icon: '📶'
+    },
     words: [
       { sinhala: 'WiFi', transliteration: 'WiFi', english: 'WiFi', example: 'මෙතන free WiFi තියෙනවද?', exampleTranslation: 'Is there free WiFi here?' },
       { sinhala: 'චාර්ජර්', transliteration: 'chārjar', english: 'Charger', example: 'මගේ ෆෝන් චාර්ජර් එක නැතිවුණා', exampleTranslation: 'I lost my phone charger' },
@@ -373,6 +433,11 @@ export const lessons: Lesson[] = [
     color: 'from-lime-400 to-green-600',
     bgPattern: 'radial-gradient(circle at 20% 60%, rgba(132,204,22,0.12) 0%, transparent 50%)',
     difficulty: 'beginner',
+    culturalTip: {
+      title: 'Wildlife Safari & Nature Respect',
+      description: 'Sri Lanka has Asia\'s highest wildlife density (Elephants, Leopards, Whales). When on safaris in Yala, Wilpattu, or Minneriya, keep your voice down, never feed wild animals, and leave zero plastic.',
+      icon: '🐘'
+    },
     words: [
       { sinhala: 'අද කාලගුණය', transliteration: 'ada kālaguṇaya', english: 'Today\'s weather', example: 'අද කාලගුණය කොහොමද?', exampleTranslation: 'How is today\'s weather?' },
       { sinhala: 'උෂ්ණයි', transliteration: 'uṣṇayi', english: 'It\'s hot', example: 'අද ගොඩක් උෂ්ණයි', exampleTranslation: 'Today is very hot' },

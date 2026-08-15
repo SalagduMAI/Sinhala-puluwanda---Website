@@ -4,6 +4,7 @@ import { APP_VERSION } from '../constants';
 
 interface HeroProps {
   onStart: () => void;
+  onOpenCheatSheet?: () => void;
   totalWords: number;
   level: number;
   streak: number;
@@ -22,7 +23,7 @@ const CULTURAL_CAPTIONS = [
   { text: 'Where Nature Meets Heritage', sinhala: 'ස්වභාවය උරුමය හමුවන තැන' },
 ];
 
-export default function Hero({ onStart, totalWords, level, streak }: HeroProps) {
+export default function Hero({ onStart, onOpenCheatSheet, totalWords, level, streak }: HeroProps) {
   const [factIndex, setFactIndex] = useState(0);
   const [typedText, setTypedText] = useState('');
   const [activeVideo, setActiveVideo] = useState(0);
@@ -223,8 +224,15 @@ export default function Hero({ onStart, totalWords, level, streak }: HeroProps) 
             </span>
             <div className="absolute inset-0 animate-shimmer opacity-20" />
           </button>
+          {onOpenCheatSheet && (
+            <button onClick={onOpenCheatSheet}
+              className="w-full sm:w-auto px-6 sm:px-7 py-3.5 sm:py-4 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 font-bold text-sm sm:text-base rounded-2xl transition-all duration-300 hover:scale-[1.04] active:scale-[0.97] flex items-center justify-center gap-2">
+              <span>📄</span>
+              <span>Travel Cheat Sheet</span>
+            </button>
+          )}
           <button onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
-            className="w-full sm:w-auto px-7 sm:px-8 py-3.5 sm:py-4 glass text-white font-semibold text-sm sm:text-base rounded-2xl hover:bg-white/15 transition-all duration-300">
+            className="w-full sm:w-auto px-6 sm:px-7 py-3.5 sm:py-4 glass text-white font-semibold text-sm sm:text-base rounded-2xl hover:bg-white/15 transition-all duration-300">
             🇱🇰 Discover Sri Lanka
           </button>
         </div>

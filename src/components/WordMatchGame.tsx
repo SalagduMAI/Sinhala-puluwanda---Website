@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { lessons } from '../data/lessons';
 import { useSpeech } from '../hooks/useSpeech';
+import { useSoundFX } from '../hooks/useSoundFX';
 
 interface WordMatchGameProps {
   darkMode: boolean;
@@ -29,6 +30,7 @@ function shuffleArray<T>(array: T[]): T[] {
 export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatchGameProps) {
   const [cards, setCards] = useState<Card[]>([]);
   const { speak, isSupported } = useSpeech();
+  const { playCorrect, playIncorrect, playCardFlip, playLevelUp } = useSoundFX();
   const [selected, setSelected] = useState<number[]>([]);
   const [matches, setMatches] = useState(0);
   const [totalPairs, setTotalPairs] = useState(6);
@@ -101,6 +103,7 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
       speak(card.text);
     }
 
+    playCardFlip();
     const newCards = cards.map(c => c.id === cardId ? { ...c, isFlipped: true } : c);
     setCards(newCards);
 
@@ -116,6 +119,7 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
 
       if (first.pairId === second.pairId && first.type !== second.type) {
         // Match!
+        playCorrect();
         matchTimeoutRef.current = setTimeout(() => {
           setCards(prev => prev.map(c =>
             c.id === firstId || c.id === secondId ? { ...c, isMatched: true } : c
@@ -126,6 +130,7 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
           isProcessingRef.current = false;
 
           if (newMatches === pairCountRef.current) {
+            playLevelUp();
             setIsRunning(false);
             setIsComplete(true);
             onComplete();
@@ -141,6 +146,7 @@ export default function WordMatchGame({ darkMode, onComplete, onBack }: WordMatc
         }, 500);
       } else {
         // No match
+        playIncorrect();
         matchTimeoutRef.current = setTimeout(() => {
           setCards(prev => prev.map(c =>
             c.id === firstId || c.id === secondId ? { ...c, isFlipped: false } : c

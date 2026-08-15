@@ -16,6 +16,9 @@ import { Lesson, lessons } from './data/lessons';
 
 import LessonView from './components/LessonView';
 import QuizView from './components/QuizView';
+import SearchModal from './components/SearchModal';
+import CheatSheetModal from './components/CheatSheetModal';
+import ShortcutsModal from './components/ShortcutsModal';
 
 // Lazy load heavy modal subviews
 const GrammarSection = lazy(() => import('./components/GrammarSection').then(m => ({ default: m.GrammarSection })));
@@ -44,6 +47,9 @@ export default function App() {
   const [activeToast, setActiveToast] = useState<{ message: string; xp: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [scrollToSection, setScrollToSection] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isCheatSheetOpen, setIsCheatSheetOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
     try {
       const done = localStorage.getItem('sinhala_onboarding_done');
@@ -67,6 +73,42 @@ export default function App() {
   } = useGame();
 
   const darkMode = state.darkMode;
+
+  // Global Keyboard Shortcuts (Ctrl+K for Search, ? for Shortcuts modal)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+K or Cmd+K: Global Search
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+        return;
+      }
+
+      // '?' (Shift+/): Keyboard Shortcuts Modal (only when not typing in inputs)
+      const target = e.target as HTMLElement | null;
+      const isInput = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      );
+
+      if (e.key === '?' && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setIsShortcutsOpen(prev => !prev);
+        return;
+      }
+
+      // Escape key closes open modals
+      if (e.key === 'Escape') {
+        if (isSearchOpen) setIsSearchOpen(false);
+        if (isCheatSheetOpen) setIsCheatSheetOpen(false);
+        if (isShortcutsOpen) setIsShortcutsOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isSearchOpen, isCheatSheetOpen, isShortcutsOpen]);
 
   // Simple hash-based router
   useEffect(() => {
@@ -224,10 +266,16 @@ export default function App() {
 
 
   const navProps = {
-    level: state.level, xp: state.xp, xpProgress,
-    streak: state.streak, darkMode,
-    onToggleDark: toggleDarkMode, onNavigate: handleNavigate,
+    level: state.level,
+    xp: state.xp,
+    xpProgress,
+    streak: state.streak,
+    darkMode,
+    onToggleDark: toggleDarkMode,
+    onNavigate: handleNavigate,
     onOpenDashboard: () => { window.location.hash = '#/dashboard'; window.scrollTo(0, 0); },
+    onOpenSearch: () => setIsSearchOpen(true),
+    onOpenCheatSheet: () => setIsCheatSheetOpen(true),
   };
 
   const toastEl = activeToast ? (
@@ -393,7 +441,13 @@ export default function App() {
       default:
         return (
           <>
-            <Hero onStart={handleStart} totalWords={totalWordsLearned} level={state.level} streak={state.streak} />
+            <Hero
+              onStart={handleStart}
+              onOpenCheatSheet={() => setIsCheatSheetOpen(true)}
+              totalWords={totalWordsLearned}
+              level={state.level}
+              streak={state.streak}
+            />
             <AlphabetSection darkMode={darkMode} soundEnabled={state.soundEnabled} />
             <LessonsSection onSelectLesson={handleSelectLesson} progress={state.wordsLearned} darkMode={darkMode} />
             <PracticeSection darkMode={darkMode} level={state.level}
@@ -428,6 +482,35 @@ export default function App() {
       {chatFab}
       {chatbotEl}
       {showOnboarding && <OnboardingModal isOpen={showOnboarding} onClose={handleCloseOnboarding} />}
+
+      {/* Global Vocabulary Search & Dictionary Modal */}
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        darkMode={darkMode}
+        soundEnabled={state.soundEnabled}
+        starredWords={state.starredWords || {}}
+        onToggleStarWord={toggleStarWord}
+        onSelectLesson={(lessonId: number) => {
+          setIsSearchOpen(false);
+          window.location.hash = `#/lesson/${lessonId}`;
+          window.scrollTo(0, 0);
+        }}
+      />
+
+      {/* 1-Click Printable / PDF Travel Cheat Sheet Modal */}
+      <CheatSheetModal
+        isOpen={isCheatSheetOpen}
+        onClose={() => setIsCheatSheetOpen(false)}
+        darkMode={darkMode}
+      />
+
+      {/* Keyboard Shortcuts Guide Modal */}
+      <ShortcutsModal
+        isOpen={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
+        darkMode={darkMode}
+      />
     </div>
   );
 }

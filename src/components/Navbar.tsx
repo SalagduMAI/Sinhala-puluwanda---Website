@@ -12,6 +12,8 @@ interface NavbarProps {
   onToggleDark: () => void;
   onNavigate: (section: string) => void;
   onOpenDashboard: () => void;
+  onOpenSearch: () => void;
+  onOpenCheatSheet: () => void;
   currentView: string;
 }
 
@@ -25,7 +27,19 @@ const NAV_LINKS = [
   { label: 'Contact', id: 'contact', icon: '✉️' },
 ];
 
-export default function Navbar({ level, xp, xpProgress, streak, darkMode, onToggleDark, onNavigate, onOpenDashboard, currentView }: NavbarProps) {
+export default function Navbar({
+  level,
+  xp,
+  xpProgress,
+  streak,
+  darkMode,
+  onToggleDark,
+  onNavigate,
+  onOpenDashboard,
+  onOpenSearch,
+  onOpenCheatSheet,
+  currentView
+}: NavbarProps) {
   const [showMobile, setShowMobile] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { lang, setLanguage } = useTranslation();
@@ -107,7 +121,44 @@ export default function Navbar({ level, xp, xpProgress, streak, darkMode, onTogg
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Quick Search Button (Desktop) */}
+            <button
+              onClick={onOpenSearch}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all duration-200 hover:scale-105 ${
+                isHero
+                  ? 'bg-slate-900/60 text-white/90 border-white/20 hover:bg-slate-900/80'
+                  : darkMode
+                  ? 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
+                  : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+              }`}
+              title="Search vocabulary (Ctrl+K)"
+              aria-label="Search vocabulary"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="hidden md:inline">Search</span>
+              <kbd className="hidden md:inline-block px-1 py-0.2 text-[9px] bg-black/20 dark:bg-white/10 rounded font-mono">⌘K</kbd>
+            </button>
+
+            {/* Travel Cheat Sheet (Desktop) */}
+            <button
+              onClick={onOpenCheatSheet}
+              className={`hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-200 hover:scale-105 ${
+                isHero
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-400/30 hover:bg-amber-500/30'
+                  : darkMode
+                  ? 'bg-amber-950/40 text-amber-400 border-amber-800/40 hover:bg-amber-900/40'
+                  : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+              }`}
+              title="Printable Sri Lanka Travel Cheat Sheet"
+              aria-label="Travel Cheat Sheet"
+            >
+              <span>📄</span>
+              <span className="hidden lg:inline">Cheat Sheet</span>
+            </button>
+
             {/* XP badge */}
             <button
               onClick={onOpenDashboard}
@@ -236,6 +287,24 @@ export default function Navbar({ level, xp, xpProgress, streak, darkMode, onTogg
                   {link.label}
                 </button>
               ))}
+              <button
+                onClick={() => { onOpenSearch(); setShowMobile(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left font-medium transition-all duration-200 ${
+                  darkMode ? 'text-slate-300 hover:bg-slate-800/60 hover:text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <span className="text-lg">🔍</span>
+                Search Dictionary (Ctrl+K)
+              </button>
+              <button
+                onClick={() => { onOpenCheatSheet(); setShowMobile(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left font-medium transition-all duration-200 ${
+                  darkMode ? 'text-slate-300 hover:bg-slate-800/60 hover:text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <span className="text-lg">📄</span>
+                Travel Cheat Sheet
+              </button>
               <button
                 onClick={() => { onOpenDashboard(); setShowMobile(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left font-medium transition-all duration-200 ${

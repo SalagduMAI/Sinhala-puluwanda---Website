@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Lesson, QuizQuestion, generateQuiz } from '../data/lessons';
+import { useSoundFX } from '../hooks/useSoundFX';
 
 interface QuizViewProps {
   lesson: Lesson;
@@ -10,6 +11,7 @@ interface QuizViewProps {
 
 export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizViewProps) {
   const [questions, setQuestions] = useState<QuizQuestion[]>(() => generateQuiz(lesson.id));
+  const { playCorrect, playIncorrect, playLevelUp } = useSoundFX();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -59,6 +61,7 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
     const correct = index === currentQuestion.correctIndex;
     setIsCorrect(correct);
     if (correct) {
+      playCorrect();
       setScore(s => {
         const nextScore = s + 1;
         finalScoreRef.current = nextScore;
@@ -66,16 +69,22 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
       });
       setStreak(s => s + 1);
     } else {
+      playIncorrect();
       setStreak(0);
       finalScoreRef.current = score;
     }
-  }, [currentQuestion, score, selectedAnswer]);
+  }, [currentQuestion, playCorrect, playIncorrect, score, selectedAnswer]);
 
   const handleNext = useCallback(() => {
     if (currentIndex + 1 >= questions.length) {
       setIsFinished(true);
       const finalScore = finalScoreRef.current;
-      if (finalScore === questions.length) setShowConfetti(true);
+      if (finalScore === questions.length) {
+        setShowConfetti(true);
+        playLevelUp();
+      } else if (finalScore >= questions.length * 0.7) {
+        playCorrect();
+      }
       onComplete(finalScore, questions.length);
     } else {
       setCurrentIndex(i => i + 1);
@@ -83,7 +92,7 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
       setIsCorrect(null);
       hasAnsweredRef.current = false;
     }
-  }, [currentIndex, onComplete, questions.length]);
+  }, [currentIndex, onComplete, playCorrect, playLevelUp, questions.length]);
 
   const handleRetry = useCallback(() => {
     setQuestions(generateQuiz(lesson.id));

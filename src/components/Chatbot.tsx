@@ -140,7 +140,24 @@ function findAnswer(input: string): string {
     return '🙏 **Do\'s and Don\'ts in Sri Lanka:**\n\n**DO ✅:**\n• Use right hand for eating/giving\n• Remove shoes at temples/homes\n• Say **ආයුබෝවන්** with palms together\n• Dress modestly at religious sites\n• Ask before photographing people\n• Stand for national anthem\n\n**DON\'T ❌:**\n• Touch someone\'s head\n• Point with your finger (use whole hand)\n• Show the soles of your feet\n• Turn your back to Buddha statues\n• Get Buddha tattoos (deportation risk!)\n• Disrespect monks or religious items\n• Raise your voice in anger publicly\n\n💡 **When in doubt:** Smile and say **සමාවෙන්න** (sorry)!';
   }
   if (q.includes('safe') && (q.includes('sri lanka') || q.includes('travel') || q.includes('is it'))) {
-    return '🛡️ **Is Sri Lanka Safe?**\n\nYes! Sri Lanka is generally **very safe** for tourists.\n\n✅ **Safe:** Violent crime against tourists is very rare\n✅ People are incredibly hospitable and helpful\n✅ Solo female travelers are welcome (use common sense)\n\n⚠️ **Watch out for:**\n• Petty theft in crowded areas (bag snatching)\n• Tuk-tuk/taxi overcharging\n• Gem/jewelry scams\n• Unlicensed tour guides\n• Strong ocean currents (swim where locals swim)\n\n📞 **Emergency:** Police 119, Ambulance 110, Fire 111\n📞 **Tourist Police:** 011-242-1052\n\n💡 Keep photocopies of your passport separately!';
+    return '🛡️ **Is Sri Lanka Safe?**\n\nYes! Sri Lanka is generally **very safe** for tourists.\n\n✅ **Safe:** Violent crime against tourists is very rare\n✅ People are incredibly hospitable and helpful\n✅ Solo female travelers are welcome (use common sense)\n\n⚠️ **Watch out for:**\n• Petty theft in crowded areas (bag snatching)\n• Tuk-tuk/taxi overcharging\n• Gem/jewelry scams\n• Unlicensed tour guides\n• Strong ocean currents (swim where locals swim)\n\n📞 **Emergency:** Police 119, Ambulance 1990\n📞 **Tourist Police:** 1912\n\n💡 Keep photocopies of your passport separately!';
+  }
+
+  // === SRI LANKA TRAVEL SPECIFICS ===
+  if (q.includes('train') || q.includes('ella') || q.includes('kandy to ella')) {
+    return '🚂 **Kandy to Ella Scenic Train Guide:**\n\n• **One of the world\'s most scenic train rides** through misty tea plantations and waterfalls.\n• **Booking:** Reserved 2nd/3rd class seats sell out 30 days in advance (book online via Sri Lanka Railways portal or at Fort station).\n• **Unreserved:** Buy on day of travel for ~300-600 LKR (arrive 45 mins early).\n• **Phrase:** "දුම්රිය ප්‍රවේශ පත්‍රයක් දෙන්න" (*Dumriya pravēśa pathrayak denna* = Give me a train ticket).';
+  }
+  if (q.includes('sigiriya') || q.includes('lion rock')) {
+    return '🦁 **Sigiriya (Lion Rock Fortress):**\n\n• UNESCO World Heritage ancient citadel built by King Kashyapa (5th Century).\n• **Best time to climb:** 6:30 AM (cooler, fewer crowds) or 4:00 PM (sunset).\n• **Climb:** ~1,200 steps (takes 1.5 - 2 hours).\n• **Tip:** Bring plenty of water and wear sturdy footwear.\n• **Alternative view:** Climb nearby *Pidurangala Rock* for breathtaking views of Sigiriya!';
+  }
+  if (q.includes('vegetarian') || q.includes('vegan') || q.includes('no meat')) {
+    return '🥗 **Vegetarian & Vegan in Sri Lanka:**\n\nSri Lanka is a vegetarian paradise!\n• **Say:** "මම එළවළු විතරක් කනවා" (*Mama eḷavaḷu vitharak kanavā* = I only eat vegetables).\n• **Egg-free:** "බිත්තර නැතුව" (*Biththara næthva* = Without eggs).\n• Most traditional curries (dhal/parippu, jackfruit/polos, beetroot) are naturally vegan as they use coconut milk instead of dairy!';
+  }
+  if (q.includes('tip') || q.includes('tipping') || q.includes('service charge')) {
+    return '💵 **Tipping Etiquette in Sri Lanka:**\n\n• **Restaurants:** 10% service charge is usually included; leaving an extra 200-500 LKR for good service is customary.\n• **Tuk-Tuk Drivers:** Round up to the nearest 100-200 LKR.\n• **Tour/Safari Drivers:** 2,000 - 4,000 LKR per day.\n• **Hotel Bellboy / Housekeeping:** 200 - 500 LKR.';
+  }
+  if (q.includes('tea') || q.includes('ceylon tea')) {
+    return '☕ **Ceylon Tea Guide:**\n\n• Sri Lanka produces the world\'s finest black, green, and white (Silver Tips) tea.\n• **Top regions:** Nuwara Eliya (high grown, floral), Dimbula, Uva.\n• **Local style:** Sweet milk tea ("Kiri thē") brewed strong with condensed or fresh milk.\n• **Order:** "කිරි තේ එකක් දෙන්න" (*Kiri thē ekak denna* = Give me a milk tea).';
   }
 
   // === APP NAVIGATION ===

@@ -253,8 +253,37 @@ export default function LessonView({
       </div>
 
       {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 py-10">
-        <div className="flex items-center justify-between mb-8">
+      <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
+
+        {/* Cultural Insight & Travel Tip Card */}
+        {lesson.culturalTip && (
+          <div className={`p-5 sm:p-6 rounded-3xl border transition-all ${
+            darkMode
+              ? 'bg-gradient-to-r from-amber-500/10 via-saffron-500/5 to-transparent border-amber-500/30'
+              : 'bg-gradient-to-r from-amber-50 via-orange-50/50 to-white border-amber-200/80 shadow-sm'
+          }`}>
+            <div className="flex items-start gap-4">
+              <span className="text-3xl sm:text-4xl flex-shrink-0 p-2 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                {lesson.culturalTip.icon}
+              </span>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-saffron-500 text-white">
+                    Cultural Insight
+                  </span>
+                  <h3 className={`font-bold text-sm sm:text-base ${darkMode ? 'text-amber-400' : 'text-amber-900'}`}>
+                    {lesson.culturalTip.title}
+                  </h3>
+                </div>
+                <p className={`text-xs sm:text-sm leading-relaxed ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  {lesson.culturalTip.description}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
           <div>
             <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>Vocabulary</h2>
             <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Tap each card to reveal • Learn all to complete</p>
