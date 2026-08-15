@@ -477,7 +477,7 @@ export default function App() {
   return (
     <div className={`relative min-h-screen ${darkMode ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'}`}>
       <Navbar {...navProps} currentView={view} />
-      <main id="main-content" className="outline-none">
+      <main id="main-content" className="outline-none pb-16 lg:pb-0">
         {renderSubView()}
       </main>
       {view === 'home' && <Footer darkMode={darkMode} onNavigate={handleNavigate} />}
