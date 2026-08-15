@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { ALL_ACHIEVEMENTS, XP_PER_LEVEL } from '../hooks/useGameState';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ALL_ACHIEVEMENTS, XP_PER_LEVEL, QuizScore } from '../hooks/useGameState';
 import { lessons } from '../data/lessons';
 import { useSpeech } from '../hooks/useSpeech';
 
@@ -20,6 +20,8 @@ interface DashboardProps {
   srsData: Record<string, { interval: number; ease: number; repetitions: number; nextReview: number }>;
   avatar: string;
   userName: string;
+  activityHistory?: Record<string, number>;
+  quizScores?: QuizScore[];
   onBack: () => void;
   onToggleStarWord: (lessonId: number, wordIndex: number) => void;
   onChangeAvatar: (avatarId: string) => void;
@@ -68,22 +70,105 @@ const GLOBAL_LEARNERS: LeaderboardEntry[] = [
 export default function Dashboard({
   darkMode, xp, level, streak, xpProgress, totalWordsLearned, achievements,
   totalQuizzes, perfectScores, wordsLearned, dailyXp, dailyGoal,
-  starredWords, srsData, avatar = '🦁', userName = 'Learner',
+  starredWords, srsData = {}, avatar = '🦁', userName = 'Learner',
+  activityHistory = {}, quizScores = [],
   onBack, onToggleStarWord, onChangeAvatar, onUpdateProfile, onResetProgress, onSetDailyGoal, onImportState
 }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<'stats' | 'starred' | 'leaderboard' | 'settings'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'srs' | 'leaderboard' | 'starred' | 'settings'>('stats');
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [editName, setEditName] = useState(userName);
   const [selectedAvatar, setSelectedAvatar] = useState(avatar);
   const [customGoal, setCustomGoal] = useState(dailyGoal);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   const { speak } = useSpeech();
 
   const dailyProgress = dailyGoal > 0 ? Math.min((dailyXp / dailyGoal) * 100, 100) : 100;
   const totalPhrases = lessons.reduce((sum, lesson) => sum + lesson.words.length, 0);
 
-  // Calculate live global leaderboard with user ranked dynamically
+  // Capture PWA beforeinstallprompt
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (!deferredPrompt) {
+      alert('To install on iOS: Tap Share ➔ "Add to Home Screen". On Chrome: Tap Menu (⋮) ➔ "Install App".');
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    }
+  };
+
+  // 30-Day Activity Matrix
+  const activityDays = useMemo(() => {
+    const days: Array<{ dateStr: string; label: string; xp: number; intensity: number }> = [];
+    const now = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayXP = activityHistory[dateStr] || 0;
+      let intensity = 0;
+      if (dayXP >= 100) intensity = 4;
+      else if (dayXP >= 50) intensity = 3;
+      else if (dayXP >= 25) intensity = 2;
+      else if (dayXP > 0) intensity = 1;
+
+      days.push({
+        dateStr,
+        label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        xp: dayXP,
+        intensity
+      });
+    }
+    return days;
+  }, [activityHistory]);
+
+  // SRS Mastery Breakdown
+  const srsBreakdown = useMemo(() => {
+    const cards = Object.values(srsData || {});
+    let apprentice = 0; // 1-4d
+    let guru = 0;       // 5-14d
+    let master = 0;     // 15-30d
+    let enlightened = 0; // >30d
+    let dueCount = 0;
+    const now = Date.now();
+
+    cards.forEach(card => {
+      if (card.nextReview <= now) dueCount++;
+      if (card.interval <= 4) apprentice++;
+      else if (card.interval <= 14) guru++;
+      else if (card.interval <= 30) master++;
+      else enlightened++;
+    });
+
+    return {
+      total: cards.length,
+      apprentice,
+      guru,
+      master,
+      enlightened,
+      dueCount
+    };
+  }, [srsData]);
+
+  // Live global leaderboard
   const leaderboard: LeaderboardEntry[] = useMemo(() => {
     const userEntry: LeaderboardEntry = {
       name: `${userName} (You)`,
@@ -104,7 +189,7 @@ export default function Dashboard({
     return found ? found.rank : 1;
   }, [leaderboard]);
 
-  // Flatten starred words list
+  // Starred words list
   const starredList = useMemo(() => {
     const list: Array<{ lessonId: number; wordIdx: number; sinhala: string; english: string; romanized: string }> = [];
     Object.entries(starredWords || {}).forEach(([lIdStr, wordIndices]) => {
@@ -161,6 +246,7 @@ export default function Dashboard({
       starredWords,
       srsData,
       dailyGoal,
+      activityHistory,
       version: '6.1.3',
       exportDate: Date.now(),
     };
@@ -183,102 +269,98 @@ export default function Dashboard({
         const requiredKeys = ['xp', 'level', 'streak', 'wordsLearned'];
         const isValid = requiredKeys.every(k => k in parsed);
         if (!isValid) {
-          alert('❌ Invalid backup file: missing required progress fields.');
+          alert('❌ Invalid backup file: missing required fields.');
           return;
         }
-        const success = onImportState(parsed);
-        if (success) {
+        if (onImportState(parsed)) {
+          alert('✅ Progress restored successfully!');
           setTimeout(() => window.location.reload(), 200);
         }
       } catch (err) {
-        console.error('❌ Error reading backup file:', err);
+        alert('❌ Corrupted or invalid JSON file.');
       }
     };
     reader.readAsText(file);
-    e.target.value = '';
   };
 
   return (
-    <div className={`min-h-screen pt-20 pb-16 px-4 sm:px-6 ${darkMode ? 'bg-slate-950 text-white' : 'bg-gradient-to-b from-slate-50 to-white text-slate-950'}`}>
+    <div className={`min-h-screen pt-20 pb-24 px-4 ${darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
       <div className="max-w-5xl mx-auto space-y-6">
         
-        {/* Top User Profile Banner */}
-        <div className={`rounded-3xl p-6 sm:p-8 border transition-all ${
-          darkMode ? 'bg-slate-900/80 border-slate-800 shadow-xl' : 'bg-white border-slate-200 shadow-lg'
+        {/* Profile Card Top Banner */}
+        <div className={`rounded-3xl p-6 sm:p-8 border shadow-xl ${
+          darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'
         }`}>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            
-            {/* User Avatar & Info */}
-            <div className="flex items-center gap-4 sm:gap-5">
-              <div className="relative group">
-                <button
-                  onClick={() => setIsEditProfileOpen(true)}
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-saffron-400 to-saffron-600 flex items-center justify-center text-3xl sm:text-4xl shadow-xl shadow-saffron-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer border-2 border-white/20"
-                  title="Click to customize profile avatar"
-                >
-                  <span>{avatar}</span>
-                </button>
-                <button
-                  onClick={() => setIsEditProfileOpen(true)}
-                  className="absolute -bottom-1 -right-1 bg-slate-900 text-white dark:bg-white dark:text-slate-900 p-1.5 rounded-lg text-xs shadow-md opacity-80 hover:opacity-100 hover:scale-110 transition-all"
-                  aria-label="Edit Profile"
-                >
-                  ✏️
-                </button>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="relative">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-saffron-400 to-saffron-600 flex items-center justify-center text-4xl sm:text-5xl shadow-lg ring-4 ring-saffron-500/20 animate-scale-in">
+                  {avatar}
+                </div>
+                <span className="absolute -bottom-2 -right-2 bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full border-2 border-white dark:border-slate-900">
+                  Lv.{level}
+                </span>
               </div>
 
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-xl sm:text-2xl font-black font-space tracking-tight">
-                    {userName}
-                  </h1>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                    darkMode ? 'bg-saffron-500/20 text-saffron-400 border border-saffron-500/30' : 'bg-saffron-100 text-saffron-700'
-                  }`}>
-                    Level {level}
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl sm:text-3xl font-black font-space">{userName}</h1>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-saffron-500/10 text-saffron-500">
+                    Rank #{userRank}
                   </span>
                 </div>
-                <p className={`text-xs sm:text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Rank #{userRank} Global • {xp} Total XP • 🔥 {streak} Day Streak
+                <p className={`text-xs sm:text-sm mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  🔥 {streak} Day Streak &bull; ⚡ {xp} Total XP
                 </p>
+
+                <div className="flex items-center gap-2 mt-3">
+                  <button
+                    onClick={() => setIsEditProfileOpen(true)}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-all flex items-center gap-1.5 ${
+                      darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <span>✏️</span> Edit Profile
+                  </button>
+
+                  {!isInstalled && (
+                    <button
+                      onClick={handleInstallPWA}
+                      className="px-3 py-1.5 rounded-xl font-bold text-xs bg-saffron-500 hover:bg-saffron-600 text-white shadow-sm transition-all flex items-center gap-1.5"
+                    >
+                      <span>📲</span> Install App
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
-              <button
-                onClick={() => setIsEditProfileOpen(true)}
-                className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ${
-                  darkMode ? 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
-                }`}
-              >
-                <span>✏️</span> Edit Profile
-              </button>
-
+            <div className="flex gap-2 w-full sm:w-auto">
               <button
                 onClick={onBack}
-                className="px-4 py-2.5 bg-gradient-to-r from-saffron-500 to-saffron-600 hover:from-saffron-400 hover:to-saffron-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-saffron-500/20 flex items-center justify-center gap-1.5"
+                className="flex-1 sm:flex-none px-5 py-2.5 bg-gradient-to-r from-saffron-500 to-saffron-600 hover:from-saffron-400 hover:to-saffron-500 text-white font-bold text-xs sm:text-sm rounded-2xl transition-all shadow-md shadow-saffron-500/20"
               >
-                <span>🏠</span> Home
+                🏠 Home
               </button>
             </div>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Tab Navigation */}
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-700/20 pb-2">
           {[
-            { id: 'stats', label: '📊 Stats & Progress' },
-            { id: 'leaderboard', label: `🏆 Global Leaderboard (Rank #${userRank})` },
-            { id: 'starred', label: `⭐ Starred Words (${starredList.length})` },
-            { id: 'settings', label: '⚙️ Settings & Reset' },
+            { id: 'stats', label: '📊 Stats & Activity' },
+            { id: 'srs', label: `🧠 Spaced Memory (${srsBreakdown.total})` },
+            { id: 'leaderboard', label: `🏆 Leaderboard (#${userRank})` },
+            { id: 'starred', label: `⭐ Starred (${starredList.length})` },
+            { id: 'settings', label: '⚙️ Settings & Backup' },
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
                 activeTab === tab.id
-                  ? 'bg-saffron-500 text-white shadow-lg shadow-saffron-500/20'
+                  ? 'bg-saffron-500 text-white shadow-md shadow-saffron-500/20'
                   : darkMode
                   ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -289,15 +371,15 @@ export default function Dashboard({
           ))}
         </div>
 
-        {/* TAB 1: STATS & OVERVIEW */}
+        {/* TAB 1: STATS & 30-DAY HEATMAP */}
         {activeTab === 'stats' && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fade-in">
             {/* Key 4 Cards */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: 'Level & Rank', value: `Lv.${level}`, icon: '⭐', color: 'from-amber-400 to-amber-600', sub: `Rank #${userRank} Global` },
-                { label: 'Day Streak', value: `${streak}d`, icon: '🔥', color: 'from-orange-400 to-red-500', sub: streak > 0 ? 'Active Streak!' : 'Start Today' },
-                { label: 'Words Learned', value: totalWordsLearned, icon: '📚', color: 'from-blue-400 to-blue-600', sub: `out of ${totalPhrases} words` },
+                { label: 'Active Streak', value: `${streak}d`, icon: '🔥', color: 'from-orange-400 to-red-500', sub: streak > 0 ? 'Consistent learner' : 'Start streak today' },
+                { label: 'Words Mastered', value: totalWordsLearned, icon: '📚', color: 'from-blue-400 to-blue-600', sub: `out of ${totalPhrases} total` },
                 { label: 'Quizzes Taken', value: totalQuizzes, icon: '🧪', color: 'from-purple-400 to-purple-600', sub: `${perfectScores} Perfect Scores` },
               ].map((stat, i) => (
                 <div
@@ -320,10 +402,53 @@ export default function Dashboard({
               ))}
             </div>
 
+            {/* 30-Day Activity Streak Heatmap */}
+            <div className={`p-6 rounded-3xl border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-bold text-sm">📅 30-Day Study Activity Matrix</h3>
+                  <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Daily XP earned across the last 30 calendar days
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                  <span>Less</span>
+                  <div className="w-3 h-3 rounded-sm bg-slate-800 dark:bg-slate-800/60" />
+                  <div className="w-3 h-3 rounded-sm bg-saffron-500/30" />
+                  <div className="w-3 h-3 rounded-sm bg-saffron-500/60" />
+                  <div className="w-3 h-3 rounded-sm bg-saffron-500" />
+                  <span>More</span>
+                </div>
+              </div>
+
+              {/* Heatmap Grid */}
+              <div className="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-15 gap-2 pt-2">
+                {activityDays.map((d, idx) => {
+                  let bg = darkMode ? 'bg-slate-800/60' : 'bg-slate-100';
+                  if (d.intensity === 1) bg = 'bg-saffron-500/30 text-saffron-400';
+                  else if (d.intensity === 2) bg = 'bg-saffron-500/55 text-white';
+                  else if (d.intensity === 3) bg = 'bg-saffron-500/80 text-white';
+                  else if (d.intensity === 4) bg = 'bg-saffron-500 text-white shadow-sm ring-1 ring-saffron-400';
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`h-12 rounded-xl flex flex-col items-center justify-center p-1 border transition-all hover:scale-110 ${bg} ${
+                        darkMode ? 'border-slate-800' : 'border-slate-200'
+                      }`}
+                      title={`${d.dateStr}: ${d.xp} XP`}
+                    >
+                      <span className="text-[9px] opacity-70 leading-none">{d.label.split(' ')[1]}</span>
+                      <span className="text-[10px] font-black mt-0.5 leading-none">{d.xp > 0 ? `+${d.xp}` : '·'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Level progress & Daily Goal */}
             <div className="grid sm:grid-cols-2 gap-4">
-              {/* Level progress */}
-              <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
+              <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
                 <h3 className="font-bold text-sm mb-4">Level Progress</h3>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-saffron-400 to-saffron-600 flex items-center justify-center shadow-lg text-white font-bold text-xl">
@@ -345,7 +470,7 @@ export default function Dashboard({
               </div>
 
               {/* Daily goal */}
-              <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
+              <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-bold text-sm">🎯 Daily Goal</h3>
                   <button
@@ -383,38 +508,9 @@ export default function Dashboard({
               </div>
             </div>
 
-            {/* Lesson breakdown */}
-            <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
-              <h3 className="font-bold text-sm mb-5">📚 Lesson Progress</h3>
-              <div className="space-y-4">
-                {lessons.map(lesson => {
-                  const learned = wordsLearned[lesson.id]?.length || 0;
-                  const total = lesson.words.length;
-                  const pct = Math.round((learned / total) * 100);
-                  return (
-                    <div key={lesson.id} className="flex items-center gap-4">
-                      <span className="text-xl w-8 text-center">{lesson.icon}</span>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-semibold">{lesson.title}</span>
-                          <span className="text-[10px] text-slate-500">{learned}/{total}</span>
-                        </div>
-                        <div role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${lesson.title} progress`} className={`h-2 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                          <div className={`h-full rounded-full bg-gradient-to-r ${lesson.color} transition-all duration-500`} style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                      {pct === 100 && <span className="text-emerald-500 text-xs font-bold">✓</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Achievements */}
-            <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border border-slate-200 shadow-sm'}`}>
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="font-bold text-sm">🏆 Achievements ({achievements.length}/{ALL_ACHIEVEMENTS.length})</h3>
-              </div>
+            <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <h3 className="font-bold text-sm mb-4">🏆 Achievements ({achievements.length}/{ALL_ACHIEVEMENTS.length})</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {ALL_ACHIEVEMENTS.map(ach => {
                   const unlocked = achievements.includes(ach.id);
@@ -423,19 +519,13 @@ export default function Dashboard({
                       key={ach.id}
                       className={`p-4 rounded-2xl border text-center transition-all ${
                         unlocked
-                          ? darkMode
-                            ? 'bg-amber-500/10 border-amber-500/30'
-                            : 'bg-amber-50 border-amber-200 shadow-sm'
-                          : darkMode
-                          ? 'bg-slate-950/40 border-slate-800/60 opacity-40 grayscale'
-                          : 'bg-slate-50 border-slate-200/60 opacity-40 grayscale'
+                          ? darkMode ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200 shadow-sm'
+                          : darkMode ? 'bg-slate-950/40 border-slate-800/60 opacity-40 grayscale' : 'bg-slate-50 border-slate-200/60 opacity-40 grayscale'
                       }`}
                     >
                       <span className="text-3xl block mb-2">{ach.icon}</span>
                       <p className={`font-bold text-xs mb-1 ${
-                        unlocked
-                          ? darkMode ? 'text-amber-400' : 'text-amber-700'
-                          : darkMode ? 'text-slate-500' : 'text-slate-400'
+                        unlocked ? darkMode ? 'text-amber-400' : 'text-amber-700' : darkMode ? 'text-slate-500' : 'text-slate-400'
                       }`}>{ach.title}</p>
                       <p className="text-[10px] text-slate-400 leading-snug">{ach.description}</p>
                       {unlocked && <span className="text-[10px] text-emerald-500 font-bold mt-1.5 block">✓ Unlocked</span>}
@@ -447,124 +537,156 @@ export default function Dashboard({
           </div>
         )}
 
-        {/* TAB 2: GLOBAL LEADERBOARD */}
-        {activeTab === 'leaderboard' && (
-          <div className="space-y-4">
-            <div className={`p-6 sm:p-8 rounded-3xl border ${
-              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'
-            }`}>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-                <div>
-                  <h3 className="text-xl font-bold flex items-center gap-2">
-                    <span>🏆</span> Global Sinhala Learners Leaderboard
-                  </h3>
-                  <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'} mt-1`}>
-                    Real-time world ranking based on cumulative experience points (XP).
-                  </p>
-                </div>
-                <div className="px-4 py-2 bg-saffron-500/10 border border-saffron-500/30 rounded-2xl text-saffron-500 font-bold text-xs">
-                  Your Rank: #{userRank} ({xp} XP)
-                </div>
+        {/* TAB 2: SPACED REPETITION (SRS) MEMORY STAGES */}
+        {activeTab === 'srs' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className={`p-6 rounded-3xl border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <h3 className="font-bold text-base mb-1">🧠 Spaced Repetition (SRS) Memory Stages</h3>
+              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'} mb-6`}>
+                Scientific SuperMemo-2 retention algorithm tracking vocabulary mastery over time
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { label: '🌱 Apprentice', sub: 'Interval 1-4 days', count: srsBreakdown.apprentice, color: 'text-amber-500', bg: 'bg-amber-500/10 border-amber-500/30' },
+                  { label: '🧘 Guru', sub: 'Interval 5-14 days', count: srsBreakdown.guru, color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/30' },
+                  { label: '⚔️ Master', sub: 'Interval 15-30 days', count: srsBreakdown.master, color: 'text-purple-500', bg: 'bg-purple-500/10 border-purple-500/30' },
+                  { label: '👑 Enlightened', sub: 'Interval 30+ days', count: srsBreakdown.enlightened, color: 'text-emerald-500', bg: 'bg-emerald-500/10 border-emerald-500/30' }
+                ].map((tier, idx) => (
+                  <div key={idx} className={`p-5 rounded-2xl border text-center ${tier.bg}`}>
+                    <span className="text-xs font-bold text-slate-400 block">{tier.label}</span>
+                    <p className={`text-3xl font-black my-1 ${tier.color}`}>{tier.count}</p>
+                    <span className="text-[10px] text-slate-400">{tier.sub}</span>
+                  </div>
+                ))}
               </div>
 
-              <div className="space-y-3">
-                {leaderboard.map((item, idx) => {
-                  const isUser = 'isUser' in item && item.isUser;
+              <div className="mt-6 pt-6 border-t border-slate-700/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold">⏰ Cards Due for Review: <span className="text-saffron-500 text-sm font-black">{srsBreakdown.dueCount}</span></p>
+                  <p className="text-[11px] text-slate-400">Reviewing cards on schedule locks words into long-term permanent memory.</p>
+                </div>
+                <button
+                  onClick={() => { window.location.hash = '#/flashcards'; window.scrollTo(0, 0); }}
+                  className="px-5 py-2.5 bg-saffron-500 hover:bg-saffron-600 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95"
+                >
+                  🚀 Review Due Cards
+                </button>
+              </div>
+            </div>
 
-                  return (
-                    <div
-                      key={idx}
-                      className={`p-4 sm:p-5 rounded-2xl border flex items-center justify-between transition-all ${
-                        isUser
-                          ? 'bg-gradient-to-r from-saffron-500/15 via-amber-500/10 to-transparent border-saffron-500 text-saffron-500 font-bold ring-2 ring-saffron-500/20 shadow-md'
-                          : darkMode
-                          ? 'bg-slate-950/60 border-slate-800 text-slate-200'
-                          : 'bg-slate-50 border-slate-200 text-slate-800'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        <span className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs ${
-                          item.rank === 1
-                            ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md'
-                            : item.rank === 2
-                            ? 'bg-slate-400 text-white'
-                            : item.rank === 3
-                            ? 'bg-amber-700 text-white'
-                            : 'bg-slate-700/20 text-slate-400'
-                        }`}>
-                          #{item.rank}
-                        </span>
-                        <span className="text-2xl">{item.avatar}</span>
-                        <div>
-                          <div className="text-sm font-bold flex items-center gap-1.5">
-                            {item.name}
-                            {isUser && <span className="text-[10px] px-1.5 py-0.5 rounded bg-saffron-500 text-white font-bold">YOU</span>}
-                          </div>
-                          <div className="text-[11px] opacity-70">
-                            Level {item.level} • {item.country}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <div className="text-base sm:text-lg font-black font-space text-saffron-500">
-                          {item.xp.toLocaleString()} XP
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          {Math.floor(item.xp / XP_PER_LEVEL)} Levels
-                        </div>
+            {/* Quiz Performance History */}
+            <div className={`p-6 rounded-3xl border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <h3 className="font-bold text-sm mb-4">🧪 Recent Quiz Performance</h3>
+              {quizScores.length === 0 ? (
+                <p className="text-xs text-slate-400 italic">No quizzes taken yet. Complete lesson quizzes to record accuracy history!</p>
+              ) : (
+                <div className="space-y-2">
+                  {quizScores.slice(-5).reverse().map((qs, i) => (
+                    <div key={i} className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                      darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-slate-50 border-slate-200'
+                    }`}>
+                      <span>Lesson #{qs.lessonId} Quiz</span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-saffron-500">{qs.score}/{qs.total} ({Math.round((qs.score / qs.total) * 100)}%)</span>
+                        <span className="text-[10px] text-slate-400">{new Date(qs.date).toLocaleDateString()}</span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* TAB 3: STARRED WORDS */}
-        {activeTab === 'starred' && (
-          <div className={`rounded-3xl p-6 sm:p-8 border ${
-            darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-          } space-y-4`}>
-            <h3 className="font-bold text-base">⭐ Starred Vocabulary ({starredList.length})</h3>
-            {starredList.length === 0 ? (
-              <p className="text-xs text-slate-400 italic py-10 text-center">
-                You haven't bookmarked any words yet. Star words in the lessons to study them here!
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {starredList.map(item => (
+        {/* TAB 3: GLOBAL LEADERBOARD */}
+        {activeTab === 'leaderboard' && (
+          <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'} animate-fade-in`}>
+            <h3 className="font-bold text-base mb-1">🏆 Global Learner Leaderboard</h3>
+            <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'} mb-6`}>
+              Ranked dynamically by total XP earned across lessons and quizzes
+            </p>
+
+            <div className="space-y-2.5">
+              {leaderboard.map((entry) => {
+                const isYou = entry.isUser;
+                return (
                   <div
-                    key={`${item.lessonId}-${item.wordIdx}`}
+                    key={entry.rank}
                     className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
-                      darkMode ? 'bg-slate-950 border-slate-800 hover:bg-slate-800/30' : 'bg-slate-50 border-slate-200 hover:bg-slate-100/60 shadow-sm'
+                      isYou
+                        ? 'bg-gradient-to-r from-saffron-500/15 to-orange-500/10 border-saffron-500 ring-2 ring-saffron-500/30'
+                        : darkMode ? 'bg-slate-800/70 border-slate-700/70' : 'bg-slate-50 border-slate-200'
                     }`}
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-xl font-bold font-sans text-slate-900 dark:text-white" lang="si">
-                          {item.sinhala}
-                        </h4>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); speak(item.sinhala, item.romanized); }}
-                          className="text-xs p-1.5 rounded-lg hover:bg-slate-700/20 text-saffron-500"
-                          aria-label="Speak pronunciation"
-                        >
-                          🔊
-                        </button>
+                    <div className="flex items-center gap-3.5">
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black ${
+                        entry.rank === 1 ? 'bg-amber-400 text-slate-950 shadow-sm' :
+                        entry.rank === 2 ? 'bg-slate-300 text-slate-950' :
+                        entry.rank === 3 ? 'bg-amber-700 text-white' :
+                        darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {entry.rank}
+                      </span>
+                      <span className="text-2xl">{entry.avatar}</span>
+                      <div>
+                        <p className={`text-xs sm:text-sm font-bold ${isYou ? 'text-saffron-500 font-black' : darkMode ? 'text-white' : 'text-slate-900'}`}>
+                          {entry.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400">{entry.country}</p>
                       </div>
-                      <p className="text-xs font-semibold text-saffron-500">{item.english}</p>
-                      <p className="text-[10px] text-slate-400 italic">[{item.romanized}]</p>
                     </div>
-                    
-                    <button
-                      onClick={() => onToggleStarWord(item.lessonId, item.wordIdx)}
-                      className="p-2 rounded-xl text-saffron-500 hover:bg-saffron-500/10 transition-colors"
-                      aria-label="Remove Bookmark"
-                    >
-                      ★
-                    </button>
+
+                    <div className="text-right">
+                      <span className="text-xs sm:text-sm font-black text-saffron-500">{entry.xp} XP</span>
+                      <span className="text-[10px] text-slate-400 block">Level {entry.level}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: STARRED WORDS */}
+        {activeTab === 'starred' && (
+          <div className={`rounded-3xl p-6 border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'} animate-fade-in`}>
+            <h3 className="font-bold text-base mb-1">⭐ Starred Vocabulary Words</h3>
+            <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'} mb-6`}>
+              Bookmark tricky words in lessons and quizzes for quick study
+            </p>
+
+            {starredList.length === 0 ? (
+              <div className="text-center py-12">
+                <span className="text-4xl block mb-2">⭐</span>
+                <p className="text-xs text-slate-400">No starred words yet. Click the star icon on any vocabulary card to save it here!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {starredList.map((item, idx) => (
+                  <div key={idx} className={`p-4 rounded-2xl border flex items-center justify-between ${
+                    darkMode ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div>
+                      <span className="sinhala-text text-lg font-bold text-saffron-500" lang="si">{item.sinhala}</span>
+                      <p className="text-xs text-slate-400 italic">[{item.romanized}]</p>
+                      <p className="text-xs font-semibold mt-0.5">{item.english}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => speak(item.sinhala, item.romanized)}
+                        className="p-2 text-saffron-500 hover:bg-saffron-500/10 rounded-xl"
+                      >
+                        🔊
+                      </button>
+                      <button
+                        onClick={() => onToggleStarWord(item.lessonId, item.wordIdx)}
+                        className="p-2 text-amber-500 hover:bg-amber-500/10 rounded-xl"
+                        title="Remove star"
+                      >
+                        ★
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -572,99 +694,42 @@ export default function Dashboard({
           </div>
         )}
 
-        {/* TAB 4: SETTINGS, PROFILE & RESET */}
+        {/* TAB 5: SETTINGS & BACKUP */}
         {activeTab === 'settings' && (
-          <div className="space-y-6">
-            {/* Profile Customization Section */}
-            <div className={`rounded-3xl p-6 sm:p-8 border ${
-              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-            } space-y-4`}>
-              <h3 className="font-bold text-base">👤 Custom Profile Settings</h3>
-              <p className="text-xs text-slate-400">
-                Personalize your display name, choose your favorite avatar, and adjust your daily study goals.
+          <div className="space-y-6 animate-fade-in">
+            <div className={`p-6 rounded-3xl border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <h3 className="font-bold text-base mb-4">💾 Backup & Restore Progress</h3>
+              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'} mb-6`}>
+                Export your progress to a JSON backup file or restore from another device.
               </p>
-              <button
-                onClick={() => setIsEditProfileOpen(true)}
-                className="px-5 py-3 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg shadow-saffron-500/20 hover:scale-105 active:scale-95 transition-all"
-              >
-                ✏️ Edit Name, Avatar & Goals
-              </button>
-            </div>
 
-            {/* Backup & Restore */}
-            <div className={`rounded-3xl p-6 sm:p-8 border ${
-              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-            } space-y-6`}>
-              <div>
-                <h3 className="font-bold text-base mb-1">💾 Progress Backup & Cloud Sync</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Export your current progress or transfer your level, achievements, and learned words to another device.
-                </p>
-              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={handleExport}
+                  className="px-5 py-2.5 bg-saffron-500 hover:bg-saffron-600 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2"
+                >
+                  <span>📤</span> Export JSON Backup
+                </button>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className={`p-5 rounded-2xl border flex flex-col justify-between space-y-4 ${
-                  darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                <label className={`px-5 py-2.5 rounded-xl font-bold text-xs border cursor-pointer transition-all flex items-center gap-2 ${
+                  darkMode ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
                 }`}>
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider mb-1">Export Backup</h4>
-                    <p className="text-[11px] text-slate-400">
-                      Saves your complete learning profile as a JSON file.
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleExport}
-                    className="w-full py-2.5 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold rounded-xl text-xs active:scale-95 transition-all shadow-md shadow-saffron-500/10"
-                  >
-                    💾 Download Progress Backup
-                  </button>
-                </div>
-
-                <div className={`p-5 rounded-2xl border flex flex-col justify-between space-y-4 ${
-                  darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider mb-1">Restore Backup</h4>
-                    <p className="text-[11px] text-slate-400">
-                      Upload a previous JSON backup to restore your data.
-                    </p>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept=".json"
-                      onChange={handleImport}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      title="Upload backup file"
-                    />
-                    <button
-                      className={`w-full py-2.5 font-bold rounded-xl text-xs text-center border transition-all pointer-events-none ${
-                        darkMode ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-700 shadow-sm'
-                      }`}
-                    >
-                      📤 Upload backup (.json)
-                    </button>
-                  </div>
-                </div>
+                  <span>📥</span> Restore Backup
+                  <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+                </label>
               </div>
             </div>
 
-            {/* DANGER ZONE: Reset Level & Progress */}
-            <div className={`rounded-3xl p-6 sm:p-8 border border-rose-500/30 ${
-              darkMode ? 'bg-rose-950/10' : 'bg-rose-50/50'
-            } space-y-4`}>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">⚠️</span>
-                <h3 className="font-bold text-base text-rose-500">Danger Zone — Reset Progress</h3>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                If you wish to restart your learning journey from the beginning, you can reset your Level back to 1, XP to 0, and clear learned lessons.
+            <div className={`p-6 rounded-3xl border ${darkMode ? 'bg-rose-950/20 border-rose-900/30' : 'bg-rose-50 border-rose-200'}`}>
+              <h3 className="font-bold text-base text-rose-500 mb-2">⚠️ Danger Zone</h3>
+              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-600'} mb-4`}>
+                Reset all XP, learned words, achievements, and restart your progress from Level 1.
               </p>
               <button
                 onClick={() => setIsResetConfirmOpen(true)}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-600/20 active:scale-95 transition-all"
+                className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-sm transition-all"
               >
-                🔄 Reset Level & All Progress
+                Reset My Progress
               </button>
             </div>
           </div>
@@ -674,99 +739,77 @@ export default function Dashboard({
 
       {/* Edit Profile Modal */}
       {isEditProfileOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className={`w-full max-w-md rounded-3xl p-6 sm:p-8 border shadow-2xl ${
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className={`max-w-md w-full p-6 sm:p-8 rounded-3xl border shadow-2xl animate-scale-up ${
             darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
           }`}>
-            <h2 className="text-xl font-bold font-space mb-4 flex items-center gap-2">
-              <span>✏️</span> Edit Learner Profile
-            </h2>
-
-            <form onSubmit={handleSaveProfile} className="space-y-5">
-              {/* Name input */}
+            <h3 className="text-xl font-bold font-space mb-4">Edit Learner Profile</h3>
+            
+            <form onSubmit={handleSaveProfile} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-400">
-                  Your Display Name
-                </label>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Display Name:</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  placeholder="Enter your name..."
-                  className={`w-full px-4 py-3 rounded-xl border text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-saffron-500 ${
-                    darkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-saffron-500 ${
+                    darkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
                   }`}
-                  maxLength={30}
                   required
                 />
               </div>
 
-              {/* Avatar Picker */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-400">
-                  Select Profile Avatar ({PROFILE_AVATARS.length} Options)
-                </label>
-                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
-                  {PROFILE_AVATARS.map(av => (
-                    <button
-                      key={av.name}
-                      type="button"
-                      onClick={() => setSelectedAvatar(av.emoji)}
-                      className={`p-2.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all ${
-                        selectedAvatar === av.emoji
-                          ? 'bg-saffron-500/20 border-2 border-saffron-500 scale-105 shadow-md'
-                          : darkMode
-                          ? 'bg-slate-950 border border-slate-800 hover:bg-slate-800'
-                          : 'bg-slate-50 border border-slate-200 hover:bg-slate-100'
-                      }`}
-                      title={av.name}
-                    >
-                      <span className="text-2xl mb-1">{av.emoji}</span>
-                      <span className="text-[9px] font-semibold truncate w-full">{av.tag}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Daily Goal Picker */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-400">
-                  Daily XP Goal
-                </label>
+                <label className="text-xs font-bold text-slate-400 block mb-2">Select Avatar:</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {[25, 50, 100, 200].map(g => (
+                  {PROFILE_AVATARS.map((av) => (
                     <button
-                      key={g}
                       type="button"
-                      onClick={() => setCustomGoal(g)}
-                      className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                        customGoal === g
-                          ? 'bg-saffron-500 text-white border-saffron-500'
-                          : darkMode
-                          ? 'bg-slate-950 border-slate-800 text-slate-300'
-                          : 'bg-slate-50 border-slate-200 text-slate-700'
+                      key={av.name}
+                      onClick={() => setSelectedAvatar(av.emoji)}
+                      className={`p-2.5 rounded-2xl text-2xl border transition-all ${
+                        selectedAvatar === av.emoji
+                          ? 'bg-saffron-500/20 border-saffron-500 scale-105 ring-2 ring-saffron-500/30'
+                          : darkMode ? 'bg-slate-950 border-slate-800 hover:bg-slate-800' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {g} XP
+                      {av.emoji}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Modal Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-700/20">
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Daily XP Goal:</label>
+                <select
+                  value={customGoal}
+                  onChange={(e) => setCustomGoal(Number(e.target.value))}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-saffron-500 ${
+                    darkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                  }`}
+                >
+                  <option value={30}>🌱 Casual (30 XP / day)</option>
+                  <option value={50}>⚡ Regular (50 XP / day)</option>
+                  <option value={100}>🔥 Serious (100 XP / day)</option>
+                  <option value={150}>👑 Intense (150 XP / day)</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold rounded-xl shadow-md hover:scale-105 active:scale-95 transition-all"
+                >
+                  Save Profile
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsEditProfileOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+                  className={`px-4 py-3 rounded-xl font-bold text-xs border ${
+                    darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+                  }`}
                 >
                   Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-gradient-to-r from-saffron-500 to-saffron-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-saffron-500/20 hover:scale-105 active:scale-95 transition-all"
-                >
-                  Save Profile
                 </button>
               </div>
             </form>
@@ -776,35 +819,35 @@ export default function Dashboard({
 
       {/* Reset Confirmation Modal */}
       {isResetConfirmOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className={`w-full max-w-md rounded-3xl p-6 sm:p-8 border border-rose-500/30 shadow-2xl ${
-            darkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className={`max-w-sm w-full p-6 rounded-3xl border shadow-2xl text-center space-y-4 animate-scale-up ${
+            darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
           }`}>
-            <div className="text-center mb-6">
-              <span className="text-4xl block mb-3">🔄</span>
-              <h2 className="text-xl font-bold font-space text-rose-500 mb-2">Reset Progress & Level?</h2>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                This will reset your XP back to 0, Level back to 1, clear all learned words, quizzes, and streaks. This action cannot be undone.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-center gap-3">
-              <button
-                onClick={() => setIsResetConfirmOpen(false)}
-                className="px-5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
-              >
-                Cancel
-              </button>
+            <span className="text-5xl block">⚠️</span>
+            <h3 className="text-xl font-bold font-space">Are you sure?</h3>
+            <p className="text-xs text-slate-400">
+              This will reset all your XP, vocabulary, achievements, and level back to the beginning.
+            </p>
+            <div className="flex gap-2 pt-2">
               <button
                 onClick={handleExecuteReset}
-                className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-600/30 active:scale-95 transition-all"
+                className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl shadow-md"
               >
-                Yes, Reset Everything
+                Yes, Reset All
+              </button>
+              <button
+                onClick={() => setIsResetConfirmOpen(false)}
+                className={`flex-1 py-2.5 rounded-xl font-bold text-xs border ${
+                  darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+                }`}
+              >
+                Cancel
               </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

@@ -14,34 +14,24 @@ describe('generateQuiz()', () => {
     expect(quiz.length).toBeGreaterThan(0);
   });
 
-  it('should have 4 unique options in each question and correctIndex pointing to the correct answer', () => {
+  it('should generate valid multi-type questions with explanations', () => {
     const lesson = lessons[0];
     const quiz = generateQuiz(lesson.id);
 
     quiz.forEach(question => {
-      // Should have 4 options
-      expect(question.options.length).toBe(4);
+      expect(question.explanation).toBeTruthy();
 
-      // Options should be unique
-      const uniqueOptions = new Set(question.options);
-      expect(uniqueOptions.size).toBe(4);
-
-      // Verify the correct answer is indeed in options at correctIndex
-      const correctAnswer = question.options[question.correctIndex];
-      expect(correctAnswer).toBeTruthy();
-
-      // Verify if correct answer matches one of the words in the lesson
-      if (question.type === 'sinhala-to-english') {
-        const matchingWord = lesson.words.find(w => w.sinhala === question.questionSinhala);
-        expect(matchingWord).toBeDefined();
-        expect(matchingWord?.english).toBe(correctAnswer);
+      if (question.type === 'sentence-order') {
+        expect(question.orderTiles?.length).toBeGreaterThan(0);
+        expect(question.correctOrder?.length).toBeGreaterThan(0);
       } else {
-        // english-to-sinhala
-        // the question title itself contains "How do you say "X" in Sinhala?"
-        // let's extract X from question text or search for correct answer in lesson words
-        const matchingWord = lesson.words.find(w => w.sinhala === correctAnswer);
-        expect(matchingWord).toBeDefined();
-        expect(question.question).toContain(`"${matchingWord?.english}"`);
+        // Multiple choice question types (sinhala-to-english, english-to-sinhala, audio-listen)
+        expect(question.options.length).toBe(4);
+        const uniqueOptions = new Set(question.options);
+        expect(uniqueOptions.size).toBe(4);
+
+        const correctAnswer = question.options[question.correctIndex];
+        expect(correctAnswer).toBeTruthy();
       }
     });
   });

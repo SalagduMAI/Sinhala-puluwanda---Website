@@ -44,6 +44,7 @@ export interface GameState {
   avatar: string;
   userName: string;
   completedGrammarQuizzes: string[];
+  activityHistory: Record<string, number>;
 }
 
 const DEFAULT_STATE: GameState = {
@@ -66,6 +67,7 @@ const DEFAULT_STATE: GameState = {
   avatar: '🦁',
   userName: 'Learner',
   completedGrammarQuizzes: [],
+  activityHistory: {},
 };
 
 export const ALL_ACHIEVEMENTS: Achievement[] = [
@@ -134,6 +136,7 @@ export function useGameState() {
     if (!s.avatar || s.avatar === 'novice') s.avatar = '🦁';
     if (!s.userName) s.userName = 'Learner';
     if (!s.completedGrammarQuizzes) s.completedGrammarQuizzes = [];
+    if (!s.activityHistory) s.activityHistory = {};
 
     if (s.dailyGoalDate !== today) {
       s.dailyXpEarned = 0;
@@ -159,7 +162,8 @@ export function useGameState() {
       !state.srsData ||
       !state.avatar ||
       !state.userName ||
-      !state.completedGrammarQuizzes
+      !state.completedGrammarQuizzes ||
+      !state.activityHistory
     ) {
       setState(checkedState);
     }
@@ -171,6 +175,9 @@ export function useGameState() {
       const newLevel = Math.floor(newXp / XP_PER_LEVEL) + 1;
       const newDailyXp = (prev.dailyGoalDate === today ? prev.dailyXpEarned : 0) + amount;
       const newStreak = calculateNewStreak(prev.lastActiveDate, today, prev.streak);
+
+      const newActivity = { ...(prev.activityHistory || {}) };
+      newActivity[today] = (newActivity[today] || 0) + amount;
 
       const newAchievements = [...prev.achievements];
       // Check daily goal
@@ -193,6 +200,7 @@ export function useGameState() {
         dailyXpEarned: newDailyXp,
         dailyGoalDate: today,
         achievements: newAchievements,
+        activityHistory: newActivity,
       };
     });
   }, [setState, today]);

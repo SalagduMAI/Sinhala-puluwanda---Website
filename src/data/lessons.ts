@@ -26,9 +26,14 @@ export interface Lesson {
 export interface QuizQuestion {
   question: string;
   questionSinhala: string;
+  transliteration?: string;
+  audioPrompt?: string;
   options: string[];
   correctIndex: number;
-  type: 'sinhala-to-english' | 'english-to-sinhala';
+  type: 'sinhala-to-english' | 'english-to-sinhala' | 'audio-listen' | 'sentence-order';
+  explanation: string;
+  orderTiles?: string[];
+  correctOrder?: string[];
 }
 
 // Complete Sinhala Alphabet — 18 vowels (ස්වර) + 42 consonants (ව්‍යංජන) = 60 letters
@@ -475,32 +480,87 @@ export function generateQuiz(lessonId: number): QuizQuestion[] {
   
   for (let i = 0; i < questionCount; i++) {
     const word = shuffledWords[i];
-    const isSinhalaToEnglish = Math.random() > 0.5;
     const otherWords = lesson.words.filter(w => w.sinhala !== word.sinhala);
     const shuffledOthers = shuffleArray(otherWords).slice(0, 3);
     
-    if (isSinhalaToEnglish) {
+    // Choose question format cycle (Audio-listen, Sinhala->English, English->Sinhala, Sentence-order)
+    const formatType = i % 4;
+
+    if (formatType === 0) {
+      // 🎧 Audio Listening Question
       const options = shuffledOthers.map(w => w.english);
       const correctIndex = Math.floor(Math.random() * 4);
       options.splice(correctIndex, 0, word.english);
       questions.push({
-        question: 'What does this mean?',
+        question: '🎧 Listen to the pronunciation & choose the correct English meaning:',
         questionSinhala: word.sinhala,
+        transliteration: word.transliteration,
+        audioPrompt: word.sinhala,
         options,
         correctIndex,
-        type: 'sinhala-to-english'
+        type: 'audio-listen',
+        explanation: `"${word.sinhala}" [${word.transliteration}] means "${word.english}".`
       });
-    } else {
+    } else if (formatType === 1) {
+      // 🔤 Sinhala to English
+      const options = shuffledOthers.map(w => w.english);
+      const correctIndex = Math.floor(Math.random() * 4);
+      options.splice(correctIndex, 0, word.english);
+      questions.push({
+        question: 'What does this Sinhala phrase mean?',
+        questionSinhala: word.sinhala,
+        transliteration: word.transliteration,
+        options,
+        correctIndex,
+        type: 'sinhala-to-english',
+        explanation: `"${word.sinhala}" (${word.transliteration}) translates directly to "${word.english}".`
+      });
+    } else if (formatType === 2) {
+      // 🔡 English to Sinhala
       const options = shuffledOthers.map(w => w.sinhala);
       const correctIndex = Math.floor(Math.random() * 4);
       options.splice(correctIndex, 0, word.sinhala);
       questions.push({
         question: `How do you say "${word.english}" in Sinhala?`,
         questionSinhala: '',
+        transliteration: word.transliteration,
         options,
         correctIndex,
-        type: 'english-to-sinhala'
+        type: 'english-to-sinhala',
+        explanation: `The correct Sinhala expression is "${word.sinhala}" [${word.transliteration}].`
       });
+    } else {
+      // 🧩 Sentence Scramble or Example Breakdown
+      const exampleWords = (word.example || word.sinhala).split(' ').filter(Boolean);
+      if (exampleWords.length >= 2) {
+        const correctOrder = [...exampleWords];
+        const orderTiles = shuffleArray(exampleWords);
+        questions.push({
+          question: `Arrange the words in correct order for: "${word.exampleTranslation || word.english}"`,
+          questionSinhala: word.example || word.sinhala,
+          transliteration: word.transliteration,
+          options: [],
+          correctIndex: 0,
+          type: 'sentence-order',
+          orderTiles,
+          correctOrder,
+          explanation: `Correct SOV word order: "${correctOrder.join(' ')}" — ${word.exampleTranslation || word.english}.`
+        });
+      } else {
+        // Fallback to Sinhala to English
+        const options = shuffledOthers.map(w => w.english);
+        const correctIndex = Math.floor(Math.random() * 4);
+        options.splice(correctIndex, 0, word.english);
+        questions.push({
+          question: 'What does this mean?',
+          questionSinhala: word.sinhala,
+          transliteration: word.transliteration,
+          options,
+          correctIndex,
+          type: 'sinhala-to-english',
+          explanation: `"${word.sinhala}" [${word.transliteration}] means "${word.english}".`
+        });
+      }
     }
   }
   return questions;

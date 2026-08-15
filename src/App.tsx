@@ -19,6 +19,7 @@ import QuizView from './components/QuizView';
 import SearchModal from './components/SearchModal';
 import CheatSheetModal from './components/CheatSheetModal';
 import ShortcutsModal from './components/ShortcutsModal';
+import BottomNav from './components/BottomNav';
 
 // Lazy load heavy modal subviews
 const GrammarSection = lazy(() => import('./components/GrammarSection').then(m => ({ default: m.GrammarSection })));
@@ -302,7 +303,7 @@ export default function App() {
           showToast('🔒 Reach Level 2 to unlock AI Sinhala Helper!', 0);
         }
       }}
-      className="fixed bottom-5 right-5 z-[80] w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-saffron-500 to-saffron-600 rounded-2xl shadow-xl shadow-saffron-500/30 hover:shadow-saffron-500/50 flex items-center justify-center text-2xl sm:text-3xl hover:scale-110 active:scale-95 transition-all duration-300 group"
+      className="fixed bottom-20 lg:bottom-5 right-5 z-[80] w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-saffron-500 to-saffron-600 rounded-2xl shadow-xl shadow-saffron-500/30 hover:shadow-saffron-500/50 flex items-center justify-center text-2xl sm:text-3xl hover:scale-110 active:scale-95 transition-all duration-300 group"
       aria-label="Open Sinhala Helper Chatbot"
     >
       <span className="group-hover:scale-110 transition-transform">🤖</span>
@@ -335,6 +336,8 @@ export default function App() {
                 starredWords={state.starredWords || {}} srsData={state.srsData || {}}
                 avatar={state.avatar || '🦁'}
                 userName={state.userName || 'Learner'}
+                activityHistory={state.activityHistory || {}}
+                quizScores={state.quizScores || []}
                 onBack={() => { window.location.hash = '#/'; window.scrollTo(0, 0); }}
                 onToggleStarWord={toggleStarWord}
                 onChangeAvatar={changeAvatar}
@@ -510,6 +513,15 @@ export default function App() {
         isOpen={isShortcutsOpen}
         onClose={() => setIsShortcutsOpen(false)}
         darkMode={darkMode}
+      />
+
+      {/* Persistent Mobile Bottom Navigation Bar (<1024px) */}
+      <BottomNav
+        darkMode={darkMode}
+        currentView={view}
+        onNavigate={handleNavigate}
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenDashboard={() => { window.location.hash = '#/dashboard'; window.scrollTo(0, 0); }}
       />
     </div>
   );

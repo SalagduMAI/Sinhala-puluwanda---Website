@@ -20,22 +20,72 @@ interface Stroke {
   size: number;
 }
 
+interface PracticeItem {
+  character: string;
+  romanized: string;
+  name: string;
+  category: 'vowel' | 'consonant' | 'number' | 'word';
+  startHint: string;
+}
+
+const SINHALA_NUMBERS: PracticeItem[] = [
+  { character: '෧', romanized: 'eka (1)', name: 'Number One', category: 'number', startHint: 'Start from top curve, loop clockwise' },
+  { character: '෨', romanized: 'deka (2)', name: 'Number Two', category: 'number', startHint: 'Start top-left, curve down and right' },
+  { character: '෩', romanized: 'thuna (3)', name: 'Number Three', category: 'number', startHint: 'Start top arch, curve down into base' },
+  { character: '෪', romanized: 'hathara (4)', name: 'Number Four', category: 'number', startHint: 'Top loop down to bottom cross' },
+  { character: '෫', romanized: 'paha (5)', name: 'Number Five', category: 'number', startHint: 'Start top bar, curve downward' },
+  { character: '෬', romanized: 'haya (6)', name: 'Number Six', category: 'number', startHint: 'Clockwise circle with top tail' },
+  { character: '෭', romanized: 'hatha (7)', name: 'Number Seven', category: 'number', startHint: 'Top bar, slant down left' },
+  { character: '෮', romanized: 'ata (8)', name: 'Number Eight', category: 'number', startHint: 'Figure-eight continuous curve' },
+  { character: '෯', romanized: 'namaya (9)', name: 'Number Nine', category: 'number', startHint: 'Top round loop, tail curving right' },
+  { character: '෦', romanized: 'binduwa (0)', name: 'Zero', category: 'number', startHint: 'Smooth circular loop counter-clockwise' },
+];
+
+const ESSENTIAL_WORDS: PracticeItem[] = [
+  { character: 'මම', romanized: 'mama', name: 'I / Me', category: 'word', startHint: 'Write "Ma" twice starting from left' },
+  { character: 'අපි', romanized: 'api', name: 'We', category: 'word', startHint: 'Write "A" then "Pa" with Ispilla' },
+  { character: 'ඔව්', romanized: 'ov', name: 'Yes', category: 'word', startHint: 'Start "O", end with Hal Va' },
+  { character: 'නැහැ', romanized: 'næhæ', name: 'No', category: 'word', startHint: 'Na with Aeda pilla + Ha with Aeda pilla' },
+  { character: 'තේ', romanized: 'thē', name: 'Tea', category: 'word', startHint: 'Kombuva before Tha with Hal' },
+  { character: 'බත්', romanized: 'bath', name: 'Rice', category: 'word', startHint: 'Write Ba, then Tha with Hal' },
+  { character: 'මල්', romanized: 'mal', name: 'Flowers', category: 'word', startHint: 'Write Ma, then La with Hal' },
+  { character: 'ගෙදර', romanized: 'gedara', name: 'Home', category: 'word', startHint: 'Kombuva Ga + Da + Ra' },
+];
+
 export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwardXP }: WritingPracticeProps) {
+  const [activeCategory, setActiveCategory] = useState<'vowel' | 'consonant' | 'number' | 'word'>('vowel');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
+  const [isDemoPlaying, setIsDemoPlaying] = useState(false);
   const [brushSize, setBrushSize] = useState(8);
   const [brushColor, setBrushColor] = useState('#f59e0b');
-  const [hasPracticed, setHasPracticed] = useState(false);
+  const [accuracyModal, setAccuracyModal] = useState<{ score: number; grade: string; message: string } | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const currentStrokeRef = useRef<Stroke | null>(null);
-  const { speak, isSupported } = useSpeech();
+  const { speak, isSupported, speechSpeed, toggleSpeed } = useSpeech();
 
-  const letter = alphabet[selectedIdx];
+  // Combine items by category
+  const getCategoryItems = (): PracticeItem[] => {
+    if (activeCategory === 'number') return SINHALA_NUMBERS;
+    if (activeCategory === 'word') return ESSENTIAL_WORDS;
+    const filteredAlphabet = alphabet.filter(a => a.type === activeCategory);
+    return filteredAlphabet.map(a => ({
+      character: a.letter,
+      romanized: a.romanized,
+      name: a.type === 'vowel' ? 'Vowel' : 'Consonant',
+      category: a.type as 'vowel' | 'consonant',
+      startHint: a.type === 'vowel' ? 'Start from central loop curving upward' : 'Begin from top hook flowing clockwise'
+    }));
+  };
 
-  // Dynamic colors list adapting to darkMode
+  const currentItems = getCategoryItems();
+  const currentItem = currentItems[selectedIdx] || currentItems[0] || {
+    character: 'අ', romanized: 'a', name: 'Vowel', category: 'vowel', startHint: 'Start from central loop'
+  };
+
   const defaultColor = darkMode ? '#f8fafc' : '#0f172a';
   const colors = [
     { value: '#f59e0b', name: 'Saffron', bgClass: 'bg-amber-500' },
@@ -45,7 +95,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     { value: defaultColor, name: 'Default', bgClass: darkMode ? 'bg-slate-100' : 'bg-slate-900' }
   ];
 
-  // Redraw all strokes on canvas
+  // Redraw canvas strokes
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -69,7 +119,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     });
   }, [strokes]);
 
-  // Canvas sizing — only on mount + resize
+  // Canvas resize observer
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -91,20 +141,19 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Redraw strokes when they change
   useEffect(() => {
     redrawCanvas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strokes]);
 
-  // Handle letter switch
-  const handleLetterChange = (idx: number) => {
+  const handleItemChange = (idx: number) => {
     setSelectedIdx(idx);
     setStrokes([]);
     currentStrokeRef.current = null;
-    setHasPracticed(false);
+    setAccuracyModal(null);
     if (soundEnabled && isSupported) {
-      speak(alphabet[idx].letter);
+      const item = currentItems[idx];
+      if (item) speak(item.character, item.romanized, speechSpeed);
     }
   };
 
@@ -164,7 +213,6 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     const prevCoord = stroke.points[stroke.points.length - 1];
     stroke.points.push(coord);
 
-    // Direct 60fps 2D context drawing without component re-render
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -185,7 +233,6 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
       const finishedStroke = currentStrokeRef.current;
       currentStrokeRef.current = null;
       setStrokes(prev => [...prev, finishedStroke]);
-      setHasPracticed(true);
     }
     setIsDrawing(false);
   };
@@ -193,7 +240,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
   const clearCanvas = () => {
     currentStrokeRef.current = null;
     setStrokes([]);
-    setHasPracticed(false);
+    setAccuracyModal(null);
   };
 
   const undoLast = () => {
@@ -201,9 +248,61 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     setStrokes(prev => prev.slice(0, -1));
   };
 
-  // Calculate handwriting stroke accuracy against reference letter stencil
-  const [accuracyModal, setAccuracyModal] = useState<{ score: number; grade: string; message: string } | null>(null);
+  // Animated trace guide demo
+  const playTraceDemo = () => {
+    if (isDemoPlaying) return;
+    setIsDemoPlaying(true);
+    clearCanvas();
 
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = canvas.getBoundingClientRect().width;
+    const height = canvas.getBoundingClientRect().height;
+    const cx = width / 2;
+    const cy = height / 2;
+    const radius = Math.min(width, height) * 0.28;
+
+    let angle = 0;
+    const animatedPoints: Point[] = [];
+
+    const interval = setInterval(() => {
+      angle += 0.15;
+      const x = cx + Math.cos(angle) * (radius * (0.8 + 0.2 * Math.sin(angle * 2)));
+      const y = cy + Math.sin(angle) * (radius * (0.8 + 0.2 * Math.cos(angle * 2)));
+      animatedPoints.push({ x, y });
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 6;
+
+      ctx.beginPath();
+      if (animatedPoints.length > 0) {
+        ctx.moveTo(animatedPoints[0].x, animatedPoints[0].y);
+        for (let i = 1; i < animatedPoints.length; i++) {
+          ctx.lineTo(animatedPoints[i].x, animatedPoints[i].y);
+        }
+        ctx.stroke();
+      }
+
+      // Draw guide laser dot
+      ctx.beginPath();
+      ctx.arc(x, y, 9, 0, Math.PI * 2);
+      ctx.fillStyle = '#ef4444';
+      ctx.fill();
+
+      if (angle >= Math.PI * 4) {
+        clearInterval(interval);
+        setIsDemoPlaying(false);
+      }
+    }, 30);
+  };
+
+  // Evaluate handwriting accuracy
   const evaluateHandwritingAccuracy = () => {
     const canvas = canvasRef.current;
     if (!canvas || strokes.length === 0) return;
@@ -213,34 +312,31 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // 1. Get drawn user canvas data
     const userImageData = ctx.getImageData(0, 0, width, height);
     const userPixels = userImageData.data;
 
-    // 2. Create offscreen canvas for reference letter template with matched typography
     const refCanvas = document.createElement('canvas');
     refCanvas.width = width;
     refCanvas.height = height;
     const refCtx = refCanvas.getContext('2d');
     if (!refCtx) return;
 
-    const fontSize = Math.floor(height * 0.65);
+    const fontSize = Math.floor(height * (currentItem.character.length > 2 ? 0.35 : 0.65));
     refCtx.font = `900 ${fontSize}px 'Noto Sans Sinhala', sans-serif`;
     refCtx.textAlign = 'center';
     refCtx.textBaseline = 'middle';
     refCtx.fillStyle = '#000000';
-    refCtx.fillText(letter.letter, width / 2, height / 2);
+    refCtx.fillText(currentItem.character, width / 2, height / 2);
 
     const refImageData = refCtx.getImageData(0, 0, width, height);
     const refPixels = refImageData.data;
 
-    // 3. Compute overlap metrics
     let refPixelCount = 0;
     let matchCount = 0;
     let userDrawnCount = 0;
 
     for (let i = 3; i < userPixels.length; i += 4) {
-      const isRefDrawn = refPixels[i] > 30; // Alpha threshold
+      const isRefDrawn = refPixels[i] > 30;
       const isUserDrawn = userPixels[i] > 30;
 
       if (isRefDrawn) refPixelCount++;
@@ -249,31 +345,30 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     }
 
     if (refPixelCount === 0 || userDrawnCount === 0) {
-      setAccuracyModal({ score: 0, grade: 'Need Drawing', message: 'Please draw inside the box first.' });
+      setAccuracyModal({ score: 0, grade: 'Need Drawing', message: 'Please trace inside the box first.' });
       return;
     }
 
-    // Coverage & Precision ratio
     const recall = matchCount / refPixelCount;
     const precision = matchCount / userDrawnCount;
     const f1Score = (2 * precision * recall) / (precision + recall || 1);
-    const accuracyPercent = Math.min(100, Math.max(15, Math.round(f1Score * 100 * 1.35)));
+    const accuracyPercent = Math.min(100, Math.max(20, Math.round(f1Score * 100 * 1.35)));
 
     let grade = 'C';
-    let message = 'Keep practicing the stroke path!';
+    let message = 'Good practice! Try following the stroke path more closely.';
     let bonusXP = 10;
 
     if (accuracyPercent >= 85) {
       grade = 'A+';
-      message = 'Outstanding handwriting! Exceptional stroke precision!';
+      message = 'Outstanding handwriting! Perfect stroke coverage!';
       bonusXP = 25;
     } else if (accuracyPercent >= 70) {
       grade = 'A';
-      message = 'Great letter shape! Very clear handwriting.';
+      message = 'Great letter curvature! Very clear and readable.';
       bonusXP = 20;
-    } else if (accuracyPercent >= 55) {
+    } else if (accuracyPercent >= 50) {
       grade = 'B';
-      message = 'Good attempt! Try staying closer to the stencil outline.';
+      message = 'Well done! Keep practicing for smooth strokes.';
       bonusXP = 15;
     }
 
@@ -281,22 +376,11 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     onAwardXP(bonusXP);
   };
 
-  const triggerCelebrate = () => {
-    if (!hasPracticed) return;
-    evaluateHandwritingAccuracy();
-  };
-
-  const handlePlaySound = () => {
-    if (isSupported) {
-      speak(letter.letter);
-    }
-  };
-
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} py-8 px-4 font-sans`}>
       <div className="max-w-4xl mx-auto space-y-6">
         
-        {/* Header */}
+        {/* Top Header */}
         <div className="flex items-center justify-between border-b border-slate-700/30 pb-4">
           <div className="flex items-center space-x-3">
             <button
@@ -306,44 +390,80 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
               }`}
               aria-label="Back to main page"
             >
-              ⬅️
+              ⬅️ Back
             </button>
             <div>
-              <h1 className="text-xl sm:text-2xl font-black font-space">Writing Practice</h1>
-              <p className={`text-xs sm:text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>අකුරු ලියන්න පුහුණු වෙමු</p>
+              <h1 className="text-xl sm:text-2xl font-black font-space">Sinhala Writing & Stroke Practice</h1>
+              <p className={`text-xs sm:text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                අකුරු සහ ඉලක්කම් ලියන්න පුහුණු වෙමු
+              </p>
             </div>
           </div>
-          <div className={`px-4 py-1.5 rounded-full text-xs font-semibold ${
-            darkMode ? 'bg-amber-950/40 text-amber-400 border border-amber-800/30' : 'bg-amber-100 text-amber-700'
-          }`}>
-            ✍️ Practice & Learn
-          </div>
+
+          {soundEnabled && isSupported && (
+            <button
+              onClick={toggleSpeed}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                speechSpeed === 'slow'
+                  ? 'bg-amber-500/20 text-amber-500 border-amber-500/40 ring-2 ring-amber-500/20'
+                  : darkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-white text-slate-600 border-slate-200'
+              }`}
+            >
+              {speechSpeed === 'slow' ? '🐢 Slow (0.55x)' : '🐇 Normal'}
+            </button>
+          )}
+        </div>
+
+        {/* Category Tabs */}
+        <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+          {[
+            { id: 'vowel', label: '🔤 Vowels (18)' },
+            { id: 'consonant', label: '🔡 Consonants (42)' },
+            { id: 'number', label: '🔢 Numbers 1-10' },
+            { id: 'word', label: '📖 Common Words' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveCategory(tab.id as any);
+                setSelectedIdx(0);
+                setStrokes([]);
+                setAccuracyModal(null);
+              }}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                activeCategory === tab.id
+                  ? 'bg-gradient-to-r from-saffron-500 to-saffron-600 text-white shadow-md'
+                  : darkMode ? 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white' : 'bg-white text-slate-600 border border-slate-200 hover:text-slate-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Letters Selector Column */}
+          {/* Item Selector Column */}
           <div className={`rounded-3xl p-4 sm:p-5 border ${
             darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-          } max-h-[500px] overflow-y-auto space-y-3`}>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 px-2">Select a Letter</h2>
+          } max-h-[520px] overflow-y-auto space-y-3`}>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-saffron-500 px-1">
+              Select Character to Practice:
+            </h2>
             <div className="grid grid-cols-4 gap-2">
-              {alphabet.map((item, idx) => (
+              {currentItems.map((item, idx) => (
                 <button
                   key={idx}
-                  onClick={() => handleLetterChange(idx)}
-                  role="tab"
-                  aria-selected={selectedIdx === idx}
-                  aria-label={`Select letter ${item.letter}, pronounced ${item.romanized}`}
-                  className={`h-11 sm:h-12 flex flex-col items-center justify-center rounded-xl transition-all font-semibold border ${
+                  onClick={() => handleItemChange(idx)}
+                  className={`h-12 flex flex-col items-center justify-center rounded-xl transition-all font-semibold border ${
                     selectedIdx === idx
-                      ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white border-amber-500 shadow-md shadow-amber-500/20 scale-105'
+                      ? 'bg-gradient-to-br from-amber-500 to-amber-600 text-white border-amber-500 shadow-md scale-105 ring-2 ring-amber-400'
                       : darkMode
                       ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700/50'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                   }`}
                 >
-                  <span className="sinhala-text text-sm" lang="si">{item.letter}</span>
-                  <span className="text-[9px] opacity-70 leading-none">{item.romanized}</span>
+                  <span className="sinhala-text text-base font-bold" lang="si">{item.character}</span>
+                  <span className="text-[9px] opacity-70 leading-none truncate max-w-full px-1">{item.romanized}</span>
                 </button>
               ))}
             </div>
@@ -355,38 +475,52 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
               darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'
             } p-6 flex flex-col items-center overflow-hidden`}>
               
-              {/* Target info */}
+              {/* Target Character Header */}
               <div className="w-full flex items-center justify-between mb-4">
                 <div>
-                  <span className={`text-[10px] uppercase font-bold tracking-widest ${darkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-                    {letter.type} letter
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-saffron-500">
+                    {currentItem.name}
                   </span>
-                  <h3 className="text-lg font-bold font-space">
-                    Trace "{letter.letter}" (<span className="italic">{letter.romanized}</span>)
+                  <h3 className="text-xl font-bold font-space">
+                    Trace "{currentItem.character}" <span className="text-sm font-normal text-slate-400">({currentItem.romanized})</span>
                   </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    💡 {currentItem.startHint}
+                  </p>
                 </div>
-                <button
-                  onClick={handlePlaySound}
-                  className={`p-2 rounded-xl transition-all ${
-                    darkMode ? 'bg-slate-800 hover:bg-slate-700 text-amber-400' : 'bg-amber-50 hover:bg-amber-100 text-amber-700'
-                  }`}
-                  aria-label={`Pronounce letter ${letter.letter}`}
-                >
-                  🔊 Pronounce
-                </button>
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => speak(currentItem.character, currentItem.romanized, speechSpeed)}
+                    className="p-2.5 rounded-xl bg-saffron-500/10 hover:bg-saffron-500/20 text-saffron-500 font-bold text-xs transition-all flex items-center gap-1.5"
+                    title="Pronounce character"
+                  >
+                    🔊 Listen
+                  </button>
+                  <button
+                    onClick={playTraceDemo}
+                    disabled={isDemoPlaying}
+                    className="p-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 font-bold text-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    title="Watch stroke animation demo"
+                  >
+                    ▶️ Demo Guide
+                  </button>
+                </div>
               </div>
 
-              {/* Canvas Area */}
+              {/* Tracing Canvas Area */}
               <div className="relative w-64 h-64 sm:w-80 sm:h-80 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-3xl overflow-hidden bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
                 
-                {/* Background Stencil Guide (HTML behind canvas) */}
+                {/* Background Stencil Guide */}
                 {showGuide && (
                   <div
-                    className="absolute inset-0 flex items-center justify-center text-[180px] sm:text-[230px] font-black select-none pointer-events-none text-slate-200 dark:text-slate-800/40 transition-colors font-sans"
+                    className={`absolute inset-0 flex items-center justify-center font-black select-none pointer-events-none text-slate-200 dark:text-slate-800/40 transition-colors font-sans ${
+                      currentItem.character.length > 2 ? 'text-7xl sm:text-8xl' : 'text-[170px] sm:text-[210px]'
+                    }`}
                     lang="si"
                     aria-hidden="true"
                   >
-                    {letter.letter}
+                    {currentItem.character}
                   </div>
                 )}
 
@@ -394,7 +528,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                 <canvas
                   ref={canvasRef}
                   role="img"
-                  aria-label={`Interactive drawing canvas for tracing Sinhala letter ${letter.letter}`}
+                  aria-label={`Interactive drawing canvas for tracing Sinhala character ${currentItem.character}`}
                   onMouseDown={startDrawing}
                   onMouseMove={draw}
                   onMouseUp={stopDrawing}
@@ -402,162 +536,98 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                   onTouchStart={startDrawing}
                   onTouchMove={draw}
                   onTouchEnd={stopDrawing}
-                  onTouchCancel={stopDrawing}
-                  style={{ touchAction: 'none' }}
-                  className="absolute inset-0 w-full h-full cursor-crosshair z-10 touch-none"
+                  className="absolute inset-0 w-full h-full cursor-crosshair touch-none"
                 />
               </div>
 
-              <p className="mt-3 text-xs text-slate-400 text-center italic">
-                Draw inside the box using your mouse or touch screen.
-              </p>
+              {/* Toolbar Controls */}
+              <div className="w-full flex flex-wrap items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-700/20">
+                {/* Brush size & colors */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-400">Color:</span>
+                  <div className="flex gap-1.5">
+                    {colors.map((c) => (
+                      <button
+                        key={c.value}
+                        onClick={() => setBrushColor(c.value)}
+                        className={`w-6 h-6 rounded-full transition-all ${c.bgClass} ${
+                          brushColor === c.value ? 'ring-2 ring-offset-2 ring-saffron-500 scale-110' : 'opacity-70 hover:opacity-100'
+                        }`}
+                        title={c.name}
+                      />
+                    ))}
+                  </div>
 
-              {/* Canvas Controls */}
-              <div className="w-full mt-6 grid grid-cols-2 gap-3 sm:flex sm:items-center sm:justify-between border-t border-slate-700/20 pt-4">
-                
-                {/* Colors picker */}
-                <div className="flex items-center space-x-2">
-                  {colors.map((c, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setBrushColor(c.value)}
-                      aria-label={`Set brush color to ${c.name}`}
-                      className={`w-6 h-6 rounded-full ${c.bgClass} border-2 ${
-                        brushColor === c.value
-                          ? 'border-white ring-2 ring-amber-500 scale-110'
-                          : 'border-transparent hover:scale-105'
-                      } transition-transform`}
-                      title={c.name}
-                    />
-                  ))}
-                </div>
-
-                {/* Brush size */}
-                <div className="flex items-center space-x-3">
-                  <span className="text-xs text-slate-500">Size:</span>
+                  <span className="text-xs font-semibold text-slate-400 ml-2">Size:</span>
                   <input
                     type="range"
-                    min="4"
-                    max="20"
+                    min={4}
+                    max={20}
                     value={brushSize}
-                    aria-label="Brush stroke thickness"
-                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                    className="w-24 accent-amber-500 cursor-pointer"
+                    onChange={(e) => setBrushSize(Number(e.target.value))}
+                    className="w-16 accent-saffron-500 cursor-pointer"
                   />
                 </div>
 
-                {/* Action buttons */}
-                <div className="col-span-2 sm:col-auto flex items-center justify-end space-x-2 w-full sm:w-auto">
+                {/* Actions */}
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setShowGuide(prev => !prev)}
+                    onClick={() => setShowGuide(!showGuide)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                      showGuide
-                        ? 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-700'
-                        : 'bg-transparent text-slate-500 border-slate-300 dark:border-slate-800'
+                      showGuide ? 'bg-saffron-500/10 text-saffron-500 border-saffron-500/30' : 'text-slate-400 border-slate-700'
                     }`}
                   >
-                    {showGuide ? 'Hide Guide' : 'Show Guide'}
+                    👁️ {showGuide ? 'Hide Guide' : 'Show Guide'}
                   </button>
 
                   <button
                     onClick={undoLast}
                     disabled={strokes.length === 0}
-                    aria-label="Undo last stroke"
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                      strokes.length === 0
-                        ? 'opacity-40 cursor-not-allowed border-slate-300 dark:border-slate-800 text-slate-400'
-                        : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                    }`}
+                    className="p-2 rounded-xl text-xs text-slate-400 hover:text-white border border-slate-700/50 disabled:opacity-30"
+                    title="Undo stroke"
                   >
                     ↩️ Undo
                   </button>
 
                   <button
                     onClick={clearCanvas}
-                    disabled={strokes.length === 0}
-                    aria-label="Clear canvas"
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                      strokes.length === 0
-                        ? 'opacity-40 cursor-not-allowed border-slate-300 dark:border-slate-800 text-slate-400'
-                        : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-rose-500 border-slate-300 dark:border-slate-700'
-                    }`}
+                    className="p-2 rounded-xl text-xs text-rose-400 hover:bg-rose-500/10 border border-rose-500/30"
+                    title="Clear canvas"
                   >
                     🗑️ Clear
                   </button>
-                </div>
 
+                  <button
+                    onClick={evaluateHandwritingAccuracy}
+                    disabled={strokes.length === 0}
+                    className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 shadow-md shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-40"
+                  >
+                    ✓ Check Accuracy
+                  </button>
+                </div>
               </div>
 
-              {/* Complete Practice Button */}
-              <button
-                onClick={triggerCelebrate}
-                disabled={!hasPracticed}
-                className={`w-full mt-6 py-3.5 rounded-2xl font-bold transition-all flex items-center justify-center space-x-2 text-sm ${
-                  hasPracticed
-                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white shadow-lg shadow-amber-500/20 scale-[1.01] active:scale-95'
-                    : 'bg-slate-200 dark:bg-slate-800/60 text-slate-400 dark:text-slate-600 border border-slate-300 dark:border-slate-800 cursor-not-allowed'
-                }`}
-              >
-                <span>Check and Done</span>
-                {hasPracticed && <span>✨</span>}
-              </button>
+              {/* Accuracy Feedback Banner */}
+              {accuracyModal && (
+                <div className="mt-4 w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 to-green-500/10 border border-emerald-500/30 text-center animate-slide-up">
+                  <div className="flex items-center justify-center gap-3">
+                    <span className="text-3xl">🏅</span>
+                    <div className="text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-black text-emerald-500">Grade: {accuracyModal.grade}</span>
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                          {accuracyModal.score}% Match
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 mt-0.5">{accuracyModal.message}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </div>
-
-            {/* Description card */}
-            <div className={`p-5 rounded-3xl border ${
-              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-            }`}>
-              <h4 className="font-bold text-sm mb-1">Pronunciation & Guide</h4>
-              <p className={`text-xs sm:text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'} leading-relaxed`}>
-                {letter.audio}
-              </p>
-            </div>
-
           </div>
         </div>
-
-        {/* Accuracy Score Results Modal */}
-        {accuracyModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-label="Handwriting Accuracy Score">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl space-y-4">
-              <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-500 font-extrabold text-2xl flex items-center justify-center mx-auto border border-amber-500/30">
-                {accuracyModal.grade}
-              </div>
-              <div>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white">
-                  {accuracyModal.score}% Accuracy
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                  {accuracyModal.message}
-                </p>
-              </div>
-
-              <div className="pt-2 flex flex-col gap-2">
-                <button
-                  onClick={() => {
-                    setAccuracyModal(null);
-                    clearCanvas();
-                    if (selectedIdx < alphabet.length - 1) {
-                      handleLetterChange(selectedIdx + 1);
-                    } else {
-                      handleLetterChange(0);
-                    }
-                  }}
-                  className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-lg shadow-amber-500/20"
-                >
-                  {selectedIdx < alphabet.length - 1 ? 'Next Letter ➔' : 'Restart Alphabet 🔄'}
-                </button>
-                <button
-                  onClick={() => setAccuracyModal(null)}
-                  className="w-full py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs"
-                >
-                  Try Again
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
     </div>

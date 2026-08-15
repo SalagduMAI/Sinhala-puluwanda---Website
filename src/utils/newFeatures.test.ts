@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, it, expect } from 'vitest';
 import { calculateStringSimilarity } from '../hooks/useSpeechRecognition';
+import { sinhalaToPhonetics } from '../hooks/useSpeech';
+import { PILLAM_LIST, combinePillam } from '../data/pillam';
 import { GRAMMAR_LESSONS } from '../data/grammar';
 import { TRANSLATIONS } from '../i18n/translations';
 
@@ -18,6 +20,34 @@ describe('New Real-World Features Unit Tests', () => {
 
     it('should return 0 for completely empty or non-matching strings', () => {
       expect(calculateStringSimilarity('', 'test')).toBe(0);
+    });
+  });
+
+  describe('Sinhala Unicode G2P Transliterator (sinhalaToPhonetics)', () => {
+    it('should transliterate root vowels correctly', () => {
+      expect(sinhalaToPhonetics('අ')).toBe('ah');
+      expect(sinhalaToPhonetics('ආ')).toBe('aah');
+      expect(sinhalaToPhonetics('ඉ')).toBe('ee');
+    });
+
+    it('should transliterate consonant + pillam combinations', () => {
+      expect(sinhalaToPhonetics('කා')).toBe('kaah');
+      expect(sinhalaToPhonetics('කි')).toBe('kee');
+      expect(sinhalaToPhonetics('කු')).toBe('koo');
+      expect(sinhalaToPhonetics('ක්')).toBe('k');
+    });
+  });
+
+  describe('Sinhala Pillam Diacritics Engine', () => {
+    it('should contain 16 standard pillam modifiers', () => {
+      expect(PILLAM_LIST.length).toBeGreaterThanOrEqual(15);
+    });
+
+    it('should accurately combine consonants with pillam symbols', () => {
+      expect(combinePillam('ක', 'ා')).toBe('කා');
+      expect(combinePillam('ක', 'ි')).toBe('කි');
+      expect(combinePillam('ක', 'ු')).toBe('කු');
+      expect(combinePillam('ක', '්')).toBe('ක්');
     });
   });
 
