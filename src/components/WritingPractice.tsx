@@ -248,7 +248,97 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
     setStrokes(prev => prev.slice(0, -1));
   };
 
-  // Animated trace guide demo
+// Extract actual glyph stroke contours for accurate demo guide animation
+function extractCharacterStrokePath(character: string, width: number, height: number): Point[] {
+  const offscreen = document.createElement('canvas');
+  offscreen.width = width;
+  offscreen.height = height;
+  const ctx = offscreen.getContext('2d');
+  if (!ctx) return [];
+
+  const fontSize = Math.floor(height * (character.length > 2 ? 0.35 : 0.62));
+  ctx.font = `900 ${fontSize}px 'Noto Sans Sinhala', sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#000000';
+  ctx.fillText(character, width / 2, height / 2);
+
+  const imgData = ctx.getImageData(0, 0, width, height);
+  const data = imgData.data;
+  const points: Point[] = [];
+
+  const step = 6;
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      const idx = (y * width + x) * 4;
+      if (data[idx + 3] > 60) {
+        points.push({ x, y });
+      }
+    }
+  }
+
+  if (points.length === 0) return [];
+
+  // Start from top-left/center active pixel
+  let startIdx = 0;
+  let minY = Infinity;
+  points.forEach((p, i) => {
+    if (p.y < minY || (p.y === minY && p.x < points[startIdx].x)) {
+      minY = p.y;
+      startIdx = i;
+    }
+  });
+
+  const ordered: Point[] = [];
+  const visited = new Uint8Array(points.length);
+  let current = points[startIdx];
+  visited[startIdx] = 1;
+  ordered.push(current);
+
+  const maxDist = 35;
+  while (ordered.length < points.length) {
+    let nearestIdx = -1;
+    let minDist = Infinity;
+
+    for (let i = 0; i < points.length; i++) {
+      if (visited[i]) continue;
+      const dx = points[i].x - current.x;
+      const dy = points[i].y - current.y;
+      const dist = dx * dx + dy * dy;
+      if (dist < minDist) {
+        minDist = dist;
+        nearestIdx = i;
+      }
+    }
+
+    if (nearestIdx === -1 || minDist > maxDist * maxDist * 4) {
+      for (let i = 0; i < points.length; i++) {
+        if (!visited[i]) {
+          nearestIdx = i;
+          break;
+        }
+      }
+      if (nearestIdx === -1) break;
+    }
+
+    visited[nearestIdx] = 1;
+    current = points[nearestIdx];
+    ordered.push(current);
+  }
+
+  const keyframes: Point[] = [];
+  const stride = Math.max(1, Math.floor(ordered.length / 50));
+  for (let i = 0; i < ordered.length; i += stride) {
+    keyframes.push(ordered[i]);
+  }
+  if (ordered.length > 0 && keyframes[keyframes.length - 1] !== ordered[ordered.length - 1]) {
+    keyframes.push(ordered[ordered.length - 1]);
+  }
+
+  return keyframes;
+}
+
+  // Animated trace guide demo tracing the EXACT Sinhala letter glyph
   const playTraceDemo = () => {
     if (isDemoPlaying) return;
     setIsDemoPlaying(true);
@@ -261,24 +351,37 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
 
     const width = canvas.getBoundingClientRect().width;
     const height = canvas.getBoundingClientRect().height;
-    const cx = width / 2;
-    const cy = height / 2;
-    const radius = Math.min(width, height) * 0.28;
 
-    let angle = 0;
+    const waypoints = extractCharacterStrokePath(currentItem.character, width, height);
+    if (waypoints.length === 0) {
+      setIsDemoPlaying(false);
+      return;
+    }
+
+    // Pronounce character when demo begins
+    if (soundEnabled && isSupported) {
+      speak(currentItem.character, currentItem.romanized, speechSpeed);
+    }
+
+    let currentStep = 0;
     const animatedPoints: Point[] = [];
 
     const interval = setInterval(() => {
-      angle += 0.15;
-      const x = cx + Math.cos(angle) * (radius * (0.8 + 0.2 * Math.sin(angle * 2)));
-      const y = cy + Math.sin(angle) * (radius * (0.8 + 0.2 * Math.cos(angle * 2)));
-      animatedPoints.push({ x, y });
+      if (currentStep >= waypoints.length) {
+        clearInterval(interval);
+        setIsDemoPlaying(false);
+        return;
+      }
+
+      const pt = waypoints[currentStep];
+      animatedPoints.push(pt);
+      currentStep++;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 7;
 
       ctx.beginPath();
       if (animatedPoints.length > 0) {
@@ -289,17 +392,15 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
         ctx.stroke();
       }
 
-      // Draw guide laser dot
+      // Draw guide laser dot with white border
       ctx.beginPath();
-      ctx.arc(x, y, 9, 0, Math.PI * 2);
-      ctx.fillStyle = '#ef4444';
+      ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
+      ctx.fillStyle = '#22c55e';
       ctx.fill();
-
-      if (angle >= Math.PI * 4) {
-        clearInterval(interval);
-        setIsDemoPlaying(false);
-      }
-    }, 30);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+    }, 28);
   };
 
   // Evaluate handwriting accuracy
@@ -377,7 +478,7 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
   };
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} py-8 px-4 font-sans`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} pt-24 pb-16 px-4 font-sans`}>
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Top Header */}

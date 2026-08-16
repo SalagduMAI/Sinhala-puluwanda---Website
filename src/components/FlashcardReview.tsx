@@ -239,7 +239,7 @@ export default function FlashcardReview({
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} py-8 px-4 font-sans`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} pt-24 pb-16 px-4 font-sans`}>
       <div className="max-w-xl mx-auto space-y-6">
         
         {/* Header */}
