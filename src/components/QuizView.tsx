@@ -15,6 +15,7 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
   const { playCorrect, playIncorrect, playLevelUp } = useSoundFX();
   const { speak, isSupported, speechSpeed } = useSpeech();
   
+  const [listeningMode, setListeningMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -46,7 +47,7 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
 
   const currentQuestion = questions[currentIndex];
 
-  // Initialize available tiles on question change & auto-play audio for listening questions
+  // Initialize available tiles on question change & auto-play audio for listening questions or listening mode
   useEffect(() => {
     hasAnsweredRef.current = false;
     setSelectedAnswer(null);
@@ -57,13 +58,14 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
       setAssembledTiles([]);
     }
 
-    if (currentQuestion?.type === 'audio-listen' && currentQuestion.audioPrompt && isSupported) {
+    const audioText = currentQuestion?.audioPrompt || currentQuestion?.questionSinhala;
+    if ((currentQuestion?.type === 'audio-listen' || listeningMode) && audioText && isSupported) {
       const timer = setTimeout(() => {
-        speak(currentQuestion.audioPrompt || '', currentQuestion.transliteration || '', speechSpeed);
+        speak(audioText, currentQuestion?.transliteration || '', speechSpeed);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [currentIndex, currentQuestion, isSupported, speak, speechSpeed]);
+  }, [currentIndex, currentQuestion, isSupported, listeningMode, speak, speechSpeed]);
 
   const confettiParticles = useMemo(() => {
     if (!showConfetti) return [];
@@ -289,6 +291,20 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
             </button>
 
             <div className="flex items-center gap-3">
+              {/* Listening Mode Toggle */}
+              <button
+                onClick={() => setListeningMode(!listeningMode)}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  listeningMode
+                    ? 'bg-amber-400 text-slate-950 shadow-md font-black ring-2 ring-white/50'
+                    : 'bg-white/15 text-white/90 hover:bg-white/25'
+                }`}
+                title="Toggle Blind Listening Mode"
+              >
+                <span>🎧</span>
+                <span>{listeningMode ? 'Listening: ON' : 'Listening: OFF'}</span>
+              </button>
+
               {streak >= 2 && (
                 <span className="bg-white/20 text-white text-xs font-black px-3 py-1 rounded-full animate-pulse">
                   🔥 {streak} streak!
@@ -322,7 +338,7 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
                 Question {currentIndex + 1} of {questions.length}
               </span>
               
-              {currentQuestion.type === 'audio-listen' && (
+              {(currentQuestion.type === 'audio-listen' || listeningMode) && (
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-400">
                   🎧 Listening Task
                 </span>
@@ -335,24 +351,27 @@ export default function QuizView({ lesson, darkMode, onBack, onComplete }: QuizV
             </div>
 
             <h2 className={`text-xl sm:text-2xl md:text-3xl font-bold mb-3 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-              {currentQuestion.question}
+              {listeningMode ? 'Listen to the audio and select the meaning:' : currentQuestion.question}
             </h2>
 
             {/* Audio Listen Prompt */}
-            {currentQuestion.type === 'audio-listen' && currentQuestion.audioPrompt && (
+            {(currentQuestion.type === 'audio-listen' || listeningMode) && (
               <div className="mt-4 flex justify-center">
                 <button
-                  onClick={() => speak(currentQuestion.audioPrompt || '', currentQuestion.transliteration || '', speechSpeed)}
+                  onClick={() => {
+                    const text = currentQuestion.audioPrompt || currentQuestion.questionSinhala || '';
+                    speak(text, currentQuestion.transliteration || '', speechSpeed);
+                  }}
                   className="inline-flex items-center gap-3 px-6 py-3.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all"
                 >
-                  <span className="text-2xl">🔊</span>
-                  <span>Play Sinhala Pronunciation</span>
+                  <span className="text-2xl animate-pulse">🔊</span>
+                  <span>Play Sinhala Audio (Replay)</span>
                 </button>
               </div>
             )}
 
-            {/* Sinhala Text Prompt */}
-            {currentQuestion.type !== 'audio-listen' && currentQuestion.questionSinhala && (
+            {/* Sinhala Text Prompt (Hidden in blind listening mode) */}
+            {!listeningMode && currentQuestion.type !== 'audio-listen' && currentQuestion.questionSinhala && (
               <p className="sinhala-text text-3xl sm:text-4xl text-saffron-500 font-bold mt-2" lang="si">
                 {currentQuestion.questionSinhala}
               </p>

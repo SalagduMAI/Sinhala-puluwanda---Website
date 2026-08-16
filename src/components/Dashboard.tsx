@@ -32,6 +32,8 @@ interface DashboardProps {
   userName: string;
   activityHistory?: Record<string, number>;
   quizScores?: QuizScore[];
+  streakFreezeCount?: number;
+  onBuyStreakFreeze?: () => boolean;
   onBack: () => void;
   onToggleStarWord: (lessonId: number, wordIndex: number) => void;
   onChangeAvatar: (avatarId: string) => void;
@@ -81,7 +83,7 @@ export default function Dashboard({
   darkMode, xp, level, streak, xpProgress, totalWordsLearned, achievements,
   totalQuizzes, perfectScores, wordsLearned, dailyXp, dailyGoal,
   starredWords, srsData = {}, avatar = '🦁', userName = 'Learner',
-  activityHistory = {}, quizScores = [],
+  activityHistory = {}, quizScores = [], streakFreezeCount = 1, onBuyStreakFreeze,
   onBack, onToggleStarWord, onChangeAvatar, onUpdateProfile, onResetProgress, onSetDailyGoal, onImportState
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<'stats' | 'srs' | 'leaderboard' | 'starred' | 'settings'>('stats');
@@ -461,6 +463,48 @@ export default function Dashboard({
                   <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{stat.label}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Streak Freeze Protection Shop / Status Card */}
+            <div className={`p-6 rounded-3xl border flex flex-col sm:flex-row items-center justify-between gap-4 ${
+              darkMode ? 'bg-slate-900 border-slate-800' : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
+            }`}>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-500 flex items-center justify-center text-2xl shadow-inner">
+                  ❄️
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm font-space">Streak Freeze Protection</h3>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      streakFreezeCount > 0
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-slate-500/20 text-slate-500'
+                    }`}>
+                      {streakFreezeCount}/2 Available
+                    </span>
+                  </div>
+                  <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Automatically protects your {streak}-day streak from resetting if you miss a study day.
+                  </p>
+                </div>
+              </div>
+
+              {streakFreezeCount < 2 && onBuyStreakFreeze && (
+                <button
+                  onClick={() => {
+                    if (xp < 100) {
+                      alert('You need 100 XP to purchase a Streak Freeze.');
+                      return;
+                    }
+                    const ok = onBuyStreakFreeze();
+                    if (ok) alert('❄️ Streak Freeze equipped successfully! (-100 XP)');
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 flex-shrink-0"
+                >
+                  Buy Freeze (-100 XP)
+                </button>
+              )}
             </div>
 
             {/* 30-Day Activity Streak Heatmap */}

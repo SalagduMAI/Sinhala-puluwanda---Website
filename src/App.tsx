@@ -71,7 +71,7 @@ export default function App() {
   const {
     state, learnWord, recordQuiz, unlockMatchAchievement,
     toggleStarWord, reviewSRSWord, changeAvatar, updateProfile, resetProgress, setDailyGoal,
-    importProgressState, toggleDarkMode, totalWordsLearned, xpProgress, addXP
+    buyStreakFreeze, importProgressState, toggleDarkMode, totalWordsLearned, xpProgress, addXP
   } = useGame();
 
   const darkMode = state.darkMode;
@@ -344,6 +344,8 @@ export default function App() {
                 userName={state.userName || 'Learner'}
                 activityHistory={state.activityHistory || {}}
                 quizScores={state.quizScores || []}
+                streakFreezeCount={state.streakFreezeCount ?? 1}
+                onBuyStreakFreeze={buyStreakFreeze}
                 onBack={() => { window.location.hash = '#/'; window.scrollTo(0, 0); }}
                 onToggleStarWord={toggleStarWord}
                 onChangeAvatar={changeAvatar}

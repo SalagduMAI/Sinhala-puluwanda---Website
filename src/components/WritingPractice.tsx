@@ -514,13 +514,26 @@ export default function WritingPractice({ darkMode, soundEnabled, onBack, onAwar
                 {/* Background Stencil Guide */}
                 {showGuide && (
                   <div
-                    className={`absolute inset-0 flex items-center justify-center font-black select-none pointer-events-none text-slate-200 dark:text-slate-800/40 transition-colors font-sans ${
+                    className={`absolute inset-0 flex items-center justify-center font-black select-none pointer-events-none text-slate-300/80 dark:text-slate-800/60 transition-colors font-sans ${
                       currentItem.character.length > 2 ? 'text-7xl sm:text-8xl' : 'text-[170px] sm:text-[210px]'
                     }`}
                     lang="si"
                     aria-hidden="true"
                   >
                     {currentItem.character}
+                  </div>
+                )}
+
+                {/* Directional Stroke Start & Flow Indicator */}
+                {showGuide && strokes.length === 0 && !isDrawing && (
+                  <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-between p-4 z-10 animate-pulse">
+                    <div className="flex items-center gap-1.5 bg-emerald-500/90 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                      <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                      <span>Start Point ⤹</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-slate-900/80 text-saffron-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-saffron-500/30">
+                      <span>Follow curve ↻</span>
+                    </div>
                   </div>
                 )}
 

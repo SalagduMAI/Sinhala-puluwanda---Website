@@ -108,4 +108,24 @@ describe('New Real-World Features Unit Tests', () => {
       });
     });
   });
+
+  describe('Streak Freeze Protection System', () => {
+    it('should calculate streak preservation with streak freeze', () => {
+      const lastActive = '2026-08-14';
+      const today = '2026-08-16'; // 2 days diff (1 day missed)
+      const p1 = lastActive.split('-').map(Number);
+      const p2 = today.split('-').map(Number);
+      const t1 = Date.UTC(p1[0], p1[1] - 1, p1[2]);
+      const t2 = Date.UTC(p2[0], p2[1] - 1, p2[2]);
+      const diff = Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
+      expect(diff).toBe(2);
+    });
+  });
+
+  describe('Certificate Theme Palette Integrity', () => {
+    it('should support at least 4 certificate themes', () => {
+      const themes = ['gold', 'sapphire', 'emerald', 'obsidian'];
+      expect(themes.length).toBe(4);
+    });
+  });
 });

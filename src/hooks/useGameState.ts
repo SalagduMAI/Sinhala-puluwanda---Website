@@ -45,6 +45,8 @@ export interface GameState {
   userName: string;
   completedGrammarQuizzes: string[];
   activityHistory: Record<string, number>;
+  streakFreezeCount: number;
+  streakFreezeUsedToday: boolean;
 }
 
 const DEFAULT_STATE: GameState = {
@@ -68,6 +70,8 @@ const DEFAULT_STATE: GameState = {
   userName: 'Learner',
   completedGrammarQuizzes: [],
   activityHistory: {},
+  streakFreezeCount: 1,
+  streakFreezeUsedToday: false,
 };
 
 export const ALL_ACHIEVEMENTS: Achievement[] = [
@@ -138,13 +142,22 @@ export function useGameState() {
     if (!s.completedGrammarQuizzes) s.completedGrammarQuizzes = [];
     if (!s.activityHistory) s.activityHistory = {};
 
+    if (s.streakFreezeCount === undefined) s.streakFreezeCount = 1;
+    if (s.streakFreezeUsedToday === undefined) s.streakFreezeUsedToday = false;
+
     if (s.dailyGoalDate !== today) {
       s.dailyXpEarned = 0;
       s.dailyGoalDate = today;
+      s.streakFreezeUsedToday = false;
     }
     if (s.lastActiveDate && s.lastActiveDate !== today) {
       const diff = getDaysDifference(s.lastActiveDate, today);
-      if (diff > 1) {
+      if (diff === 2 && s.streakFreezeCount > 0) {
+        // Automatically consume a streak freeze to save the streak!
+        s.streakFreezeCount -= 1;
+        s.streakFreezeUsedToday = true;
+        s.lastActiveDate = today;
+      } else if (diff > 1) {
         s.streak = 0;
       }
     }
@@ -157,6 +170,7 @@ export function useGameState() {
       state.dailyGoalDate !== checkedState.dailyGoalDate ||
       state.dailyXpEarned !== checkedState.dailyXpEarned ||
       state.streak !== checkedState.streak ||
+      state.streakFreezeCount !== checkedState.streakFreezeCount ||
       state.achievements.length !== checkedState.achievements.length ||
       !state.starredWords ||
       !state.srsData ||
@@ -548,6 +562,23 @@ export function useGameState() {
     return Object.values(checkedState.wordsLearned || {}).reduce((sum, words) => sum + (words?.length || 0), 0);
   }, [checkedState.wordsLearned]);
 
+  const buyStreakFreeze = useCallback(() => {
+    let success = false;
+    setState(prev => {
+      const currentCount = prev.streakFreezeCount ?? 0;
+      if (prev.xp >= 100 && currentCount < 2) {
+        success = true;
+        return {
+          ...prev,
+          xp: prev.xp - 100,
+          streakFreezeCount: currentCount + 1,
+        };
+      }
+      return prev;
+    });
+    return success;
+  }, [setState]);
+
   const xpProgress = useMemo(() => {
     const currentLevelXP = (checkedState.level - 1) * XP_PER_LEVEL;
     const progressXP = checkedState.xp - currentLevelXP;
@@ -567,6 +598,7 @@ export function useGameState() {
     updateProfile,
     resetProgress,
     setDailyGoal,
+    buyStreakFreeze,
     importProgressState,
     toggleDarkMode,
     toggleSound,
