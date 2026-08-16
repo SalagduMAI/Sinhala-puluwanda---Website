@@ -2,6 +2,16 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ALL_ACHIEVEMENTS, XP_PER_LEVEL, QuizScore } from '../hooks/useGameState';
 import { lessons } from '../data/lessons';
 import { useSpeech } from '../hooks/useSpeech';
+import CertificateModal from './CertificateModal';
+import {
+  NotificationSettings,
+  loadNotificationSettings,
+  saveNotificationSettings,
+  requestNotificationPermission,
+  sendStudyNotification,
+  isNotificationSupported,
+  getNotificationPermission
+} from '../utils/notifications';
 
 interface DashboardProps {
   darkMode: boolean;
@@ -77,18 +87,23 @@ export default function Dashboard({
   const [activeTab, setActiveTab] = useState<'stats' | 'srs' | 'leaderboard' | 'starred' | 'settings'>('stats');
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isCertOpen, setIsCertOpen] = useState(false);
   const [editName, setEditName] = useState(userName);
   const [selectedAvatar, setSelectedAvatar] = useState(avatar);
   const [customGoal, setCustomGoal] = useState(dailyGoal);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
+  // Notification settings state
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings>(loadNotificationSettings);
+  const [notifPermission, setNotifPermission] = useState<string>('default');
+
   const { speak } = useSpeech();
 
   const dailyProgress = dailyGoal > 0 ? Math.min((dailyXp / dailyGoal) * 100, 100) : 100;
   const totalPhrases = lessons.reduce((sum, lesson) => sum + lesson.words.length, 0);
 
-  // Capture PWA beforeinstallprompt
+  // Capture PWA beforeinstallprompt & Notification permissions
   useEffect(() => {
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -99,6 +114,11 @@ export default function Dashboard({
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
     }
+
+    if (isNotificationSupported()) {
+      setNotifPermission(getNotificationPermission());
+    }
+
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
@@ -112,6 +132,41 @@ export default function Dashboard({
     if (outcome === 'accepted') {
       setIsInstalled(true);
       setDeferredPrompt(null);
+    }
+  };
+
+  const handleToggleNotifications = async (enabled: boolean) => {
+    if (enabled) {
+      const granted = await requestNotificationPermission();
+      setNotifPermission(getNotificationPermission());
+      if (granted) {
+        const next = { ...notifSettings, enabled: true };
+        setNotifSettings(next);
+        saveNotificationSettings(next);
+        sendStudyNotification('🦁 Reminders Enabled!', 'We will remind you daily to maintain your Sinhala study streak!');
+      } else {
+        alert('Notification permission was blocked in browser settings. Please allow notifications to receive study reminders.');
+      }
+    } else {
+      const next = { ...notifSettings, enabled: false };
+      setNotifSettings(next);
+      saveNotificationSettings(next);
+    }
+  };
+
+  const handleHourChange = (hour: number) => {
+    const next = { ...notifSettings, reminderHour: hour };
+    setNotifSettings(next);
+    saveNotificationSettings(next);
+  };
+
+  const handleSendTestNotification = () => {
+    const ok = sendStudyNotification(
+      '🦁 Sinhala Puluwanda Test Reminder',
+      `Awesome! Your notifications are working perfectly. Streak: ${streak} days 🔥`
+    );
+    if (!ok) {
+      alert('Please enable browser notification permissions first.');
     }
   };
 
@@ -143,10 +198,10 @@ export default function Dashboard({
   // SRS Mastery Breakdown
   const srsBreakdown = useMemo(() => {
     const cards = Object.values(srsData || {});
-    let apprentice = 0; // 1-4d
-    let guru = 0;       // 5-14d
-    let master = 0;     // 15-30d
-    let enlightened = 0; // >30d
+    let apprentice = 0;
+    let guru = 0;
+    let master = 0;
+    let enlightened = 0;
     let dueCount = 0;
     const now = Date.now();
 
@@ -310,10 +365,10 @@ export default function Dashboard({
                   </span>
                 </div>
                 <p className={`text-xs sm:text-sm mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  🔥 {streak} Day Streak &bull; ⚡ {xp} Total XP
+                  🔥 {streak} Day Streak &bull; ⚡ {xp} Total XP &bull; 🎓 {totalWordsLearned} Words Mastered
                 </p>
 
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex flex-wrap items-center gap-2 mt-3">
                   <button
                     onClick={() => setIsEditProfileOpen(true)}
                     className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-all flex items-center gap-1.5 ${
@@ -321,6 +376,13 @@ export default function Dashboard({
                     }`}
                   >
                     <span>✏️</span> Edit Profile
+                  </button>
+
+                  <button
+                    onClick={() => setIsCertOpen(true)}
+                    className="px-3 py-1.5 rounded-xl font-bold text-xs bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+                  >
+                    <span>🎓</span> Official Certificate
                   </button>
 
                   {!isInstalled && (
@@ -353,7 +415,7 @@ export default function Dashboard({
             { id: 'srs', label: `🧠 Spaced Memory (${srsBreakdown.total})` },
             { id: 'leaderboard', label: `🏆 Leaderboard (#${userRank})` },
             { id: 'starred', label: `⭐ Starred (${starredList.length})` },
-            { id: 'settings', label: '⚙️ Settings & Backup' },
+            { id: 'settings', label: '⚙️ Settings & Notifications' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -374,7 +436,6 @@ export default function Dashboard({
         {/* TAB 1: STATS & 30-DAY HEATMAP */}
         {activeTab === 'stats' && (
           <div className="space-y-6 animate-fade-in">
-            {/* Key 4 Cards */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: 'Level & Rank', value: `Lv.${level}`, icon: '⭐', color: 'from-amber-400 to-amber-600', sub: `Rank #${userRank} Global` },
@@ -694,11 +755,78 @@ export default function Dashboard({
           </div>
         )}
 
-        {/* TAB 5: SETTINGS & BACKUP */}
+        {/* TAB 5: SETTINGS & NOTIFICATIONS & BACKUP */}
         {activeTab === 'settings' && (
           <div className="space-y-6 animate-fade-in">
+            
+            {/* Daily Study Notifications Panel */}
             <div className={`p-6 rounded-3xl border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-              <h3 className="font-bold text-base mb-4">💾 Backup & Restore Progress</h3>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">🔔</span>
+                  <div>
+                    <h3 className="font-bold text-base font-space">Daily Study Reminder Push Notifications</h3>
+                    <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Receive automatic daily reminders to study and protect your streak.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notifSettings.enabled}
+                    onChange={(e) => handleToggleNotifications(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-saffron-500"></div>
+                </label>
+              </div>
+
+              {notifSettings.enabled && (
+                <div className={`p-4 rounded-2xl border space-y-4 pt-4 mt-2 ${
+                  darkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <label className="text-xs font-bold block mb-1">Preferred Reminder Time:</label>
+                      <span className="text-[11px] text-slate-400">Local device clock trigger</span>
+                    </div>
+
+                    <select
+                      value={notifSettings.reminderHour}
+                      onChange={(e) => handleHourChange(Number(e.target.value))}
+                      className={`px-3 py-2 rounded-xl border text-xs font-bold ${
+                        darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                      }`}
+                    >
+                      <option value={8}>🌅 8:00 AM (Morning Coffee)</option>
+                      <option value={12}>☀️ 12:00 PM (Lunch Break)</option>
+                      <option value={18}>🌇 6:00 PM (Evening)</option>
+                      <option value={19}>🌙 7:00 PM (After Work - Recommended)</option>
+                      <option value={21}>🌌 9:00 PM (Before Bed)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-700/20">
+                    <span className="text-[11px] text-slate-400">
+                      Permission: <strong className={notifPermission === 'granted' ? 'text-emerald-500' : 'text-amber-500'}>{notifPermission}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSendTestNotification}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-saffron-500 hover:bg-saffron-600 text-white shadow-sm transition-all"
+                    >
+                      🚀 Send Test Notification
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Backup & Restore Progress */}
+            <div className={`p-6 rounded-3xl border ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+              <h3 className="font-bold text-base mb-2">💾 Backup & Restore Progress</h3>
               <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'} mb-6`}>
                 Export your progress to a JSON backup file or restore from another device.
               </p>
@@ -720,6 +848,7 @@ export default function Dashboard({
               </div>
             </div>
 
+            {/* Reset Progress Danger Zone */}
             <div className={`p-6 rounded-3xl border ${darkMode ? 'bg-rose-950/20 border-rose-900/30' : 'bg-rose-50 border-rose-200'}`}>
               <h3 className="font-bold text-base text-rose-500 mb-2">⚠️ Danger Zone</h3>
               <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-600'} mb-4`}>
@@ -736,6 +865,20 @@ export default function Dashboard({
         )}
 
       </div>
+
+      {/* Official Completion Certificate Modal */}
+      {isCertOpen && (
+        <CertificateModal
+          isOpen={isCertOpen}
+          onClose={() => setIsCertOpen(false)}
+          darkMode={darkMode}
+          userName={userName}
+          level={level}
+          xp={xp}
+          totalWordsLearned={totalWordsLearned}
+          perfectScores={perfectScores}
+        />
+      )}
 
       {/* Edit Profile Modal */}
       {isEditProfileOpen && (

@@ -20,6 +20,7 @@ import SearchModal from './components/SearchModal';
 import CheatSheetModal from './components/CheatSheetModal';
 import ShortcutsModal from './components/ShortcutsModal';
 import BottomNav from './components/BottomNav';
+import { checkAndTriggerDailyReminder } from './utils/notifications';
 
 // Lazy load heavy modal subviews
 const GrammarSection = lazy(() => import('./components/GrammarSection').then(m => ({ default: m.GrammarSection })));
@@ -165,6 +166,11 @@ export default function App() {
 
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  // Daily study reminder check
+  useEffect(() => {
+    checkAndTriggerDailyReminder(state.streak);
+  }, [state.streak]);
 
   // Handle robust scrollIntoView after navigation/render
   useEffect(() => {

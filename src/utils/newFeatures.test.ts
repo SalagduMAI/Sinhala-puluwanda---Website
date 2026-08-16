@@ -5,6 +5,11 @@ import { sinhalaToPhonetics } from '../hooks/useSpeech';
 import { PILLAM_LIST, combinePillam } from '../data/pillam';
 import { GRAMMAR_LESSONS } from '../data/grammar';
 import { TRANSLATIONS } from '../i18n/translations';
+import {
+  loadNotificationSettings,
+  saveNotificationSettings,
+  DEFAULT_NOTIFICATION_SETTINGS
+} from './notifications';
 
 describe('New Real-World Features Unit Tests', () => {
   describe('Speech Similarity Scoring (Levenshtein Distance)', () => {
@@ -48,6 +53,25 @@ describe('New Real-World Features Unit Tests', () => {
       expect(combinePillam('ක', 'ි')).toBe('කි');
       expect(combinePillam('ක', 'ු')).toBe('කු');
       expect(combinePillam('ක', '්')).toBe('ක්');
+    });
+  });
+
+  describe('Daily Study Reminders Notification Settings', () => {
+    it('should have default notification settings configured', () => {
+      expect(DEFAULT_NOTIFICATION_SETTINGS.enabled).toBe(false);
+      expect(DEFAULT_NOTIFICATION_SETTINGS.reminderHour).toBe(19);
+    });
+
+    it('should save and load notification settings from localStorage', () => {
+      saveNotificationSettings({
+        enabled: true,
+        reminderHour: 20,
+        lastNotifiedDate: '2026-08-16'
+      });
+      const loaded = loadNotificationSettings();
+      expect(loaded.enabled).toBe(true);
+      expect(loaded.reminderHour).toBe(20);
+      expect(loaded.lastNotifiedDate).toBe('2026-08-16');
     });
   });
 

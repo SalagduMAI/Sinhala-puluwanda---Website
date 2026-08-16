@@ -142,6 +142,41 @@ class SoundEffectsEngine {
 
 export const soundEffects = new SoundEffectsEngine();
 
+// Auto-unlock Web Audio & Speech synthesis on first user interaction for iOS Safari & Android Chrome
+export function setupAudioAutoUnlock() {
+  if (typeof window === 'undefined') return;
+
+  const unlock = () => {
+    try {
+      // 1. Resume Web Audio Context
+      soundEffects.playClick();
+
+      // 2. Pre-warm SpeechSynthesis with a silent space
+      if ('speechSynthesis' in window) {
+        const warmUtterance = new SpeechSynthesisUtterance(' ');
+        warmUtterance.volume = 0.01;
+        warmUtterance.rate = 2.0;
+        window.speechSynthesis.speak(warmUtterance);
+      }
+    } catch {}
+
+    window.removeEventListener('touchstart', unlock);
+    window.removeEventListener('touchend', unlock);
+    window.removeEventListener('click', unlock);
+    window.removeEventListener('keydown', unlock);
+  };
+
+  window.addEventListener('touchstart', unlock, { passive: true });
+  window.addEventListener('touchend', unlock, { passive: true });
+  window.addEventListener('click', unlock, { passive: true });
+  window.addEventListener('keydown', unlock, { passive: true });
+}
+
+// Automatically bind on initial load
+if (typeof window !== 'undefined') {
+  setupAudioAutoUnlock();
+}
+
 export function useSoundFX(soundEnabled = true) {
   return {
     playCorrect: () => soundEnabled && soundEffects.playCorrect(),

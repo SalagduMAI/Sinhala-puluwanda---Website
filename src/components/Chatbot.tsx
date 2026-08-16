@@ -143,21 +143,39 @@ function findAnswer(input: string): string {
     return '🛡️ **Is Sri Lanka Safe?**\n\nYes! Sri Lanka is generally **very safe** for tourists.\n\n✅ **Safe:** Violent crime against tourists is very rare\n✅ People are incredibly hospitable and helpful\n✅ Solo female travelers are welcome (use common sense)\n\n⚠️ **Watch out for:**\n• Petty theft in crowded areas (bag snatching)\n• Tuk-tuk/taxi overcharging\n• Gem/jewelry scams\n• Unlicensed tour guides\n• Strong ocean currents (swim where locals swim)\n\n📞 **Emergency:** Police 119, Ambulance 1990\n📞 **Tourist Police:** 1912\n\n💡 Keep photocopies of your passport separately!';
   }
 
-  // === SRI LANKA TRAVEL SPECIFICS ===
-  if (q.includes('train') || q.includes('ella') || q.includes('kandy to ella')) {
-    return '🚂 **Kandy to Ella Scenic Train Guide:**\n\n• **One of the world\'s most scenic train rides** through misty tea plantations and waterfalls.\n• **Booking:** Reserved 2nd/3rd class seats sell out 30 days in advance (book online via Sri Lanka Railways portal or at Fort station).\n• **Unreserved:** Buy on day of travel for ~300-600 LKR (arrive 45 mins early).\n• **Phrase:** "දුම්රිය ප්‍රවේශ පත්‍රයක් දෙන්න" (*Dumriya pravēśa pathrayak denna* = Give me a train ticket).';
+  // === SRI LANKA TRAVEL & CULTURAL SPECIFICS ===
+  if (q.includes('slang') || q.includes('machan') || q.includes('aiyo') || q.includes('colloquial') || q.includes('informal word')) {
+    return '🇱🇰 **Sri Lankan Slang & Colloquial Words:**\n\n• **Machan (මචං)** = "Bro / Dude / Mate" — friendly way to address friends and friendly locals.\n• **Aiyo (අයියෝ)** = "Oh no! / Oh dear! / Alas!" — expresses surprise, frustration, or dismay.\n• **Hari (හරි)** = "Okay / Right / Done" (Say **Hari Hari** for "Got it!").\n• **Ela / Patta (එළ / පට්ට)** = "Awesome! / Super cool!"\n• **Gedara (ගෙදර)** = Home\n• **Shape (ෂේප්)** = "All good / No problem / Handled"';
   }
-  if (q.includes('sigiriya') || q.includes('lion rock')) {
-    return '🦁 **Sigiriya (Lion Rock Fortress):**\n\n• UNESCO World Heritage ancient citadel built by King Kashyapa (5th Century).\n• **Best time to climb:** 6:30 AM (cooler, fewer crowds) or 4:00 PM (sunset).\n• **Climb:** ~1,200 steps (takes 1.5 - 2 hours).\n• **Tip:** Bring plenty of water and wear sturdy footwear.\n• **Alternative view:** Climb nearby *Pidurangala Rock* for breathtaking views of Sigiriya!';
+  if (q.includes('train') || q.includes('ella') || q.includes('kandy to ella') || q.includes('scenic train') || q.includes('railway')) {
+    return '🚂 **Kandy to Ella Scenic Train Guide:**\n\n• **One of the world\'s most scenic train rides** through misty tea plantations, pine forests, and Demodara Nine Arches Bridge.\n• **Booking:** Reserved 2nd/3rd class seats sell out 30 days in advance (book online via Sri Lanka Railways portal or at Fort station).\n• **Unreserved:** Buy on day of travel for ~300-600 LKR (arrive 45 mins early).\n• **Coastal Train:** Colombo to Galle / Matara hugs the Indian ocean waves!\n• **Phrase:** "දුම්රිය ප්‍රවේශ පත්‍රයක් දෙන්න" (*Dumriya pravēśa pathrayak denna* = Give me a train ticket).';
   }
-  if (q.includes('vegetarian') || q.includes('vegan') || q.includes('no meat')) {
-    return '🥗 **Vegetarian & Vegan in Sri Lanka:**\n\nSri Lanka is a vegetarian paradise!\n• **Say:** "මම එළවළු විතරක් කනවා" (*Mama eḷavaḷu vitharak kanavā* = I only eat vegetables).\n• **Egg-free:** "බිත්තර නැතුව" (*Biththara næthva* = Without eggs).\n• Most traditional curries (dhal/parippu, jackfruit/polos, beetroot) are naturally vegan as they use coconut milk instead of dairy!';
+  if (q.includes('sigiriya') || q.includes('lion rock') || q.includes('pidurangala')) {
+    return '🦁 **Sigiriya (Lion Rock Fortress) & Pidurangala:**\n\n• UNESCO World Heritage ancient citadel built by King Kashyapa (5th Century).\n• **Best time to climb:** 6:30 AM (cooler, fewer crowds) or 4:00 PM (sunset).\n• **Climb:** ~1,200 steps (takes 1.5 - 2 hours).\n• **Pidurangala Rock:** Right opposite Sigiriya — shorter climb with the ultimate panoramic view of Sigiriya at sunrise!\n• **Phrase:** "කොච්චර වෙලාවක් යනවද?" (*Kochchara velāvak yanavada?* = How much time does it take?)';
+  }
+  if (q.includes('safari') || q.includes('yala') || q.includes('elephant') || q.includes('leopard') || q.includes('udawalawe') || q.includes('wildlife')) {
+    return '🐘 **Wildlife Safari Guide:**\n\n• **Yala National Park:** Highest leopard density in the world + sloth bears & elephants.\n• **Udawalawe:** Guaranteed elephant sightings around the reservoir year-round.\n• **Minneriya / Kaudulla:** "The Gathering" (hundreds of wild elephants in dry season July–Oct).\n• **Tips:** Book morning (6 AM) or late afternoon (3 PM) game drives. Wear neutral safari colors.\n• **Phrase:** "අලි ඉන්නවද?" (*Ali innavada?* = Are there elephants?)';
+  }
+  if (q.includes('surf') || q.includes('beach') || q.includes('waves') || q.includes('arugam') || q.includes('weligama') || q.includes('mirissa') || q.includes('whale')) {
+    return '🏄 **Surfing & Coastal Beaches:**\n\n• **South Coast (Nov–April):** Weligama (beginner gentle sand breaks), Mirissa (whale watching), Midigama / Hiriketiya.\n• **East Coast (May–Sept):** Arugam Bay (world-class right-hand point breaks), Nilaveli & Trincomalee.\n• **Whale Watching in Mirissa:** Best Dec–April for Blue Whales and Spinner Dolphins.\n• **Phrase:** "මුහුදේ නාන්න පුළුවන්ද?" (*Muhudē nānna puḷuvanda?* = Is it safe to swim in the sea?)';
+  }
+  if (q.includes('hike') || q.includes('adam\'s peak') || q.includes('sri pada') || q.includes('knuckles') || q.includes('ella rock')) {
+    return '🥾 **Hiking & Trekking in Sri Lanka:**\n\n• **Adam\'s Peak (Sri Pada):** Sacred mountain pilgrimage (5,500 steps). Climb starts at 2:00 AM to catch the sacred shadow sunrise at the summit (Dec–May season).\n• **Ella Rock & Little Adam\'s Peak:** Beautiful accessible hill-country hikes.\n• **Knuckles Mountain Range:** Cloud forest trails and endemic waterfalls for avid trekkers.\n• **Say:** "වතුර බෝතලයක් දෙන්න" (*Vathura bōthalayak denna* = Give me a bottle of water).';
+  }
+  if (q.includes('vegetarian') || q.includes('vegan') || q.includes('no meat') || q.includes('allergy') || q.includes('gluten') || q.includes('dairy')) {
+    return '🥗 **Vegetarian, Vegan & Dietary Guide:**\n\nSri Lanka is a vegetarian & vegan paradise!\n• **Say:** "මම එළවළු විතරක් කනවා" (*Mama eḷavaḷu vitharak kanavā* = I only eat vegetables).\n• **No Eggs:** "බිත්තර නැතුව" (*Biththara næthva* = Without eggs).\n• **No Fish/Meat:** "මාළු මස් නැතුව" (*Māḷu mas næthva*).\n• Most curries (Parippu/Dhal, Polos/Green Jackfruit, Beetroot, Brinjal Moju) use coconut milk and are 100% dairy-free!';
+  }
+  if (q.includes('kottu') || q.includes('hopper') || q.includes('appa') || q.includes('roti') || q.includes('sambol') || q.includes('food')) {
+    return '🍛 **Must-Try Sri Lankan Street Foods:**\n\n1. **Kottu Roti:** Chopped flatbread shredded on hot griddle with vegetables, egg, or meat (iconic sound).\n2. **Appa (Hoppers):** Crispy bowl-shaped rice flour pancakes with soft coconut center (try *Biththara Appa* / Egg Hopper).\n3. **Pol Sambol:** Freshly scraped coconut chili relish with lime.\n4. **Watalappam:** Steamed spiced jaggery, coconut custard, and cashew dessert.\n5. **Phrase:** "මේක ගොඩක් රසයි!" (*Mēka goḍak rasayi!* = This is very delicious!)';
+  }
+  if (q.includes('tea') || q.includes('ceylon tea') || q.includes('nuwara eliya') || q.includes('milk tea')) {
+    return '☕ **Ceylon Tea Guide:**\n\n• Sri Lanka produces the world\'s finest black, green, and white (Silver Tips) tea.\n• **Top regions:** Nuwara Eliya (high grown, floral), Dimbula, Uva.\n• **Local style:** Sweet milk tea ("Kiri thē") brewed strong with condensed or fresh milk.\n• **Order:** "කිරි තේ එකක් දෙන්න" (*Kiri thē ekak denna* = Give me a milk tea).\n• **Without sugar:** "සීනි නැතුව" (*Sīni næthva* = Without sugar).';
   }
   if (q.includes('tip') || q.includes('tipping') || q.includes('service charge')) {
     return '💵 **Tipping Etiquette in Sri Lanka:**\n\n• **Restaurants:** 10% service charge is usually included; leaving an extra 200-500 LKR for good service is customary.\n• **Tuk-Tuk Drivers:** Round up to the nearest 100-200 LKR.\n• **Tour/Safari Drivers:** 2,000 - 4,000 LKR per day.\n• **Hotel Bellboy / Housekeeping:** 200 - 500 LKR.';
   }
-  if (q.includes('tea') || q.includes('ceylon tea')) {
-    return '☕ **Ceylon Tea Guide:**\n\n• Sri Lanka produces the world\'s finest black, green, and white (Silver Tips) tea.\n• **Top regions:** Nuwara Eliya (high grown, floral), Dimbula, Uva.\n• **Local style:** Sweet milk tea ("Kiri thē") brewed strong with condensed or fresh milk.\n• **Order:** "කිරි තේ එකක් දෙන්න" (*Kiri thē ekak denna* = Give me a milk tea).';
+  if (q.includes('plug') || q.includes('power') || q.includes('adapter') || q.includes('voltage') || q.includes('charging')) {
+    return '🔌 **Electricity & Power Plugs in Sri Lanka:**\n\n• **Voltage:** 230V / 50Hz.\n• **Plug Types:** Type D (3 round pins) and Type G (British 3 rectangular pins).\n• **Local Pro-Tip:** Most hotel sockets accept standard Type G plugs; standard universal travel adapters work everywhere.';
   }
 
   // === APP NAVIGATION ===
